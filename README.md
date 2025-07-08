@@ -1,1 +1,1 @@
-# gcpds-cv-pykit
+# Computer Vision Python Kit
