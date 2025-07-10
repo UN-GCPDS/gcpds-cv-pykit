@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class DiceLoss(nn.Module):
+class DICELoss(nn.Module):
     """
     Dice Loss for binary and multilabel segmentation.
 
