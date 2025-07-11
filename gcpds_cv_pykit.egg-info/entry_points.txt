@@ -1,3 +1,0 @@
-[console_scripts]
-gcpds-evaluate = gcpds_cv_pykit.cli.evaluate:main
-gcpds-train = gcpds_cv_pykit.cli.train:main
