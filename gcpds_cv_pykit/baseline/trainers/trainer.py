@@ -359,8 +359,8 @@ class SegmentationModel_Trainer:
             axs[1,idx].set_title(f'Pred class {element}')
 
             if isinstance(self.single_class_train, int):
-                axs[2,idx].imshow(mask_sample_np[0, 0], vmin=0.0, vmax=1.0)
-                axs[2,idx].set_title(f"GT for single class")
+                axs[2,0].imshow(mask_sample_np[0, 0], vmin=0.0, vmax=1.0)
+                axs[2,0].set_title(f"GT for single class")
             else:
                 axs[2,idx].imshow(mask_sample_np[0, element], vmin=0.0, vmax=1.0)
                 axs[2,idx].set_title(f"GT for class {element}")
