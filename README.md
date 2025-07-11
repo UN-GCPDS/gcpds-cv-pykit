@@ -29,14 +29,14 @@ pip install gcpds-cv-pykit
 
 ### From Source
 ```bash
-git clone https://github.com/your-username/gcpds-cv-pykit.git
+git clone https://github.com/UN-GCPDS/gcpds-cv-pykit.git
 cd gcpds-cv-pykit
 pip install -e .
 ```
 
 ### Development Installation
 ```bash
-git clone https://github.com/your-username/gcpds-cv-pykit.git
+git clone https://github.com/UN-GCPDS/gcpds-cv-pykit.git
 cd gcpds-cv-pykit
 pip install -e ".[dev,docs]"
 ```
@@ -244,7 +244,7 @@ We welcome contributions! Please follow these steps:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/gcpds-cv-pykit.git
+git clone https://github.com/UN-GCPDS/gcpds-cv-pykit.git
 cd gcpds-cv-pykit
 
 # Install in development mode
@@ -264,7 +264,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **GCPDS Team** - *Initial work* - [your-email@example.com](mailto:your-email@example.com)
+- **GCPDS Team** - *Initial work* - [gcpds_man@unal.edu.co](mailto:gcpds_man@unal.edu.co)
 
 ## 🙏 Acknowledgments
 
@@ -274,7 +274,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-username/gcpds-cv-pykit/issues)
+- **Issues**: [GitHub Issues](https://github.com/UN-GCPDS/gcpds-cv-pykit/issues)
 - **Documentation**: [Read the Docs](https://gcpds-cv-pykit.readthedocs.io/)
 - **Email**: your-email@example.com
 
