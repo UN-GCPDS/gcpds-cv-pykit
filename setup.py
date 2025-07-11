@@ -77,7 +77,7 @@ setup(
     name='gcpds-cv-pykit',
     version=get_version(),
     author='GCPDS Team',
-    author_email='liturriago@unal.edu.co',
+    author_email='gcpds_man@unal.edu.co',
     description='A comprehensive toolkit for computer vision and segmentation tasks',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -147,7 +147,7 @@ setup(
     
     # Additional metadata
     maintainer='GCPDS Team',
-    maintainer_email='your-email@example.com',
+    maintainer_email='gcpds_man@unal.edu.co',
     
     # Ensure compatibility
     setup_requires=[
@@ -180,5 +180,5 @@ if __name__ == '__main__':
     print("  from gcpds_cv_pykit.baseline.trainers import SegmentationModel_Trainer")
     print("  from gcpds_cv_pykit.baseline import PerformanceModels")
     print("\nDocumentation: https://gcpds-cv-pykit.readthedocs.io/")
-    print("Issues: https://github.com/your-username/gcpds-cv-pykit/issues")
+    print("Issues: https://github.com/UN-GCPDS/gcpds-cv-pykit/issues")
     print("="*60 + "\n")
