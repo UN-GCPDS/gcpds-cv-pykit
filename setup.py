@@ -40,7 +40,7 @@ def get_version():
         with open(version_file, 'r') as f:
             exec(f.read())
             return locals()['__version__']
-    return '0.1.0'  # Default version
+    return '0.1.1'  # Default version
 
 # Read requirements
 install_requires = read_requirements()

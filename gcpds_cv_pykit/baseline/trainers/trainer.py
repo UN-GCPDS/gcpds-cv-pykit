@@ -19,8 +19,8 @@ from ..models import UNet
 from ..losses import (DICELoss, CrossEntropyLoss, FocalLoss, TverskyLoss)
 from typing import Union, List, Tuple, Optional, Dict, Any
 
-class SegmentationModel_Trainer:
 
+class SegmentationModel_Trainer:
     def __init__(
         self,
         train_loader: DataLoader,

@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.cuda.amp import autocast
 import numpy as np
 
-from ..losses import DICELoss, CrossEntropyLoss, FocalLoss, TverskyLoss
+from .losses import DICELoss, CrossEntropyLoss, FocalLoss, TverskyLoss
 
 
 class PerformanceModels:
