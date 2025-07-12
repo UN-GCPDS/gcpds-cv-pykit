@@ -127,7 +127,10 @@ class Segmentation_Dataset(Dataset):
             if Path(file_path).exists():
                 mask = torchvision.io.read_image(str(file_path), mode=ImageReadMode.GRAY)
                 mask = TF.resize(mask, list(self.image_size))
-                mask = mask.float() 
+                if mask.max() > 1:
+                    mask = mask.float() / 255.0
+                else:
+                    mask = mask.float()
                 ground_truth[i, ...] = mask
             else:
                 # If mask file does not exist, leave as zeros
