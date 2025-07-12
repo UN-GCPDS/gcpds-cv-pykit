@@ -50,13 +50,13 @@ def download_and_prepare_dataset(
     return str(target_path)
 
 def OxfordIITPet(
-    kaggle_dataset: str = "lucasiturriago/oxfordiiitpet/versions/2"
+    kaggle_dataset: str = "lucasiturriago/oxfordiiitpet/versions/3"
 ) -> str:
     """
     Download and prepare the OxfordIITPet dataset from KaggleHub.
 
     Args:
-        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/oxfordiiitpet/versions/2').
+        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/oxfordiiitpet/versions/3').
 
     Returns:
         str: Path to the prepared dataset folder.

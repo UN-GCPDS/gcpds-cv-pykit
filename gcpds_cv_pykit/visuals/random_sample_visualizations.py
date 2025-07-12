@@ -77,9 +77,7 @@ def random_sample_visualization(
     
     if type == 'baseline':
         # Validate inputs
-        if single_class is not None and (single_class < 0 or single_class >= num_classes):
-            raise ValueError(f"single_class must be in range [0, {num_classes-1}], got {single_class}")
-        
+    
         if max_classes_to_show <= 0:
             raise ValueError(f"max_classes_to_show must be positive, got {max_classes_to_show}")
         
@@ -96,7 +94,7 @@ def random_sample_visualization(
 
         # Validate batch is not empty
         if images.shape[0] == 0:
-            raise IndexError("Batch is empty, cannot select a sample")
+            raise IndexError("Batch is empty, cannot select a sample") 
 
         # Select a random sample within the batch
         sample_idx: int = random.randint(0, images.shape[0] - 1)
