@@ -178,28 +178,36 @@ class EfficientNetEncoder(nn.Module):
 
 class Decoder(nn.Module):
     """Decoder module for U-Net with skip connections.
-    
+
     Args:
         encoder_channels: List of channel dimensions from encoder (bottleneck first).
         decoder_channels: List of channel dimensions for decoder blocks.
     """
-    
+
     def __init__(self, encoder_channels: List[int], decoder_channels: List[int]) -> None:
         super().__init__()
         self.upconvs = nn.ModuleList()
         self.dec_blocks = nn.ModuleList()
-        for in_ch, out_ch, skip_ch in zip(encoder_channels, decoder_channels, decoder_channels[1:]+[0]):
+
+        # encoder_channels[0] is bottleneck, encoder_channels[1:] are skip connections
+        # We need to pair each decoder level with its corresponding skip connection
+        for i, (in_ch, out_ch) in enumerate(zip(encoder_channels[:-1], decoder_channels)):
+            # Upsampling from previous level
             self.upconvs.append(
                 nn.ConvTranspose2d(in_ch, out_ch, kernel_size=2, stride=2)
             )
-            if skip_ch > 0:
+
+            # Skip connection channels (reverse order since we go from bottleneck up)
+            if i < len(encoder_channels) - 1:
+                skip_ch = encoder_channels[-(i+1)]  # Get skip channels in reverse order
                 self.dec_blocks.append(DoubleConv(out_ch + skip_ch, out_ch))
             else:
+                # Last decoder block (no skip connection)
                 self.dec_blocks.append(DoubleConv(out_ch, out_ch))
-                
+
     def forward(self, x: torch.Tensor, skips: List[torch.Tensor]) -> torch.Tensor:
         """Forward pass through the decoder.
-        
+
         Args:
             x: Input tensor from bottleneck.
             skips: List of skip connection tensors from encoder.
