@@ -64,7 +64,7 @@ class Segmentation_Dataset(Dataset):
         print(f"Number of patch files found: {self.num_samples}")
 
         # Prepare mask paths for each sample
-        mask_path_main = self.data_dir / self.partition / 'masks' / 'ground_truth'
+        mask_path_main = self.data_dir / self.partition / 'masks' 
         self.path_masks: List[List[Path]] = []
         for sample in tqdm(self.file_sample, desc="Organizing masks"):
             masks_sample = []

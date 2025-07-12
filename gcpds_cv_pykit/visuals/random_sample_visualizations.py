@@ -139,7 +139,7 @@ def random_sample_visualization(
             ax = axes[0][i + 1]
             ax.set_title(f'Class {class_idx} Mask', loc='center')
             mask_img: torch.Tensor = masks[sample_idx, class_idx, :, :]
-            ax.imshow(mask_img.cpu().numpy(), cmap='gray') #  vmin=0.0, vmax=1.0, 
+            ax.imshow(mask_img.cpu().numpy(), vmin=0.0, vmax=1.0, cmap='gray')
             ax.axis('off')
 
         # Hide axes for all subplots
