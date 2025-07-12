@@ -43,11 +43,11 @@ class SegmentationModel_Trainer:
             and all(isinstance(item, str) for item in self.wandb_monitoring)
         ):
             wandb.login(key=self.wandb_monitoring[0])
-            keys_to_exclude = {
-                'Input size', 'Dir of dataset', 'Single class train',
-                'Single class valid', 'Single class test', 'Wandb monitoring'
+            keys_to_include = {
+                'Model', 'Image size', 'Number of classes',
+                'Backbone', 'Activation function', 'Loss function'
             }
-            wandb_config = {key: value for key, value in self.config.items() if key not in keys_to_exclude}
+            wandb_config = {key: value for key, value in self.config.items() if key not in keys_to_include}
             self.run = wandb.init(
                 project=self.wandb_monitoring[1],
                 name=self.wandb_monitoring[2],
@@ -71,7 +71,7 @@ class SegmentationModel_Trainer:
                     out_channels=self.config.get('Number of classes', 1),
                     backbone= self.config.get('Backbone', None),
                     pretrained=self.config.get('Pretrained', True),
-                    final_activation= self.config.get('Activation Function', None),
+                    final_activation= self.config.get('Activation function', None),
                 )
                 return self.model
 
@@ -80,7 +80,7 @@ class SegmentationModel_Trainer:
             
     def loss_handling(self) -> nn.Module:
 
-        loss_fn = self.config.get('Loss Function', 'DICE')
+        loss_fn = self.config.get('Loss function', 'DICE')
 
         match loss_fn:
 
@@ -786,7 +786,7 @@ class SegmentationModel_Trainer:
     def start(self) -> None:
 
         self.epochs = self.config.get('Epochs',50)
-        self.device = torch.device(self.config.get('device', 'cpu'))
+        self.device = torch.device(self.config.get('Device', 'cpu'))
         self.amp_ = self.config.get('AMixPre', False)
 
         if self.amp_ and torch.cuda.is_available():
