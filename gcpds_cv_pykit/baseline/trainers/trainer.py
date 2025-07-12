@@ -120,15 +120,15 @@ class SegmentationModel_Trainer:
                 # Freeze encoder parameters
                 for param in self.model.encoder.parameters():
                     param.requires_grad = False
-                # Enable decoder and final_conv parameters
+                # Enable decoder and segmentation_head parameters
                 for param in self.model.decoder.parameters():
                     param.requires_grad = True
-                for param in self.model.final_conv.parameters():
+                for param in self.model.segmentation_head.parameters():
                     param.requires_grad = True
 
                 params.extend([
                     {'params': self.model.decoder.parameters(), 'lr': 1e-4},
-                    {'params': self.model.final_conv.parameters(), 'lr': 1e-4}
+                    {'params': self.model.segmentation_head.parameters(), 'lr': 1e-4}
                 ])
                 self.optimizer = optim.Adam(params)
 
@@ -145,15 +145,15 @@ class SegmentationModel_Trainer:
                         for param in m.parameters():
                             param.requires_grad = True
 
-                # Enable decoder and final_conv parameters
+                # Enable decoder and segmentation_head parameters
                 for param in self.model.decoder.parameters():
                     param.requires_grad = True
-                for param in self.model.final_conv.parameters():
+                for param in self.model.segmentation_head.parameters():
                     param.requires_grad = True
 
                 params = [
                     {'params': self.model.decoder.parameters(), 'lr': 1e-4},
-                    {'params': self.model.final_conv.parameters(), 'lr': 1e-4},
+                    {'params': self.model.segmentation_head.parameters(), 'lr': 1e-4},
                     {'params': bn_params, 'lr': 1e-5}
                 ]
                 self.optimizer = optim.Adam(params)
@@ -182,15 +182,15 @@ class SegmentationModel_Trainer:
                                 bn_params.append(param)
                                 added_params.add(param)
 
-                # Enable decoder and final_conv parameters
+                # Enable decoder and segmentation_head parameters
                 for param in self.model.decoder.parameters():
                     param.requires_grad = True
-                for param in self.model.final_conv.parameters():
+                for param in self.model.segmentation_head.parameters():
                     param.requires_grad = True
 
                 params = [
                     {'params': self.model.decoder.parameters(), 'lr': 1e-4},
-                    {'params': self.model.final_conv.parameters(), 'lr': 1e-4},
+                    {'params': self.model.segmentation_head.parameters(), 'lr': 1e-4},
                     {'params': bn_params, 'lr': 1e-5},
                     {'params': layer4_params, 'lr': 1e-5}
                 ]
@@ -226,15 +226,15 @@ class SegmentationModel_Trainer:
                                 bn_params.append(param)
                                 added_params.add(param)
 
-                # Enable decoder and final_conv parameters
+                # Enable decoder and segmentation_head parameters
                 for param in self.model.decoder.parameters():
                     param.requires_grad = True
-                for param in self.model.final_conv.parameters():
+                for param in self.model.segmentation_head.parameters():
                     param.requires_grad = True
 
                 params = [
                     {'params': self.model.decoder.parameters(), 'lr': 1e-4},
-                    {'params': self.model.final_conv.parameters(), 'lr': 1e-4},
+                    {'params': self.model.segmentation_head.parameters(), 'lr': 1e-4},
                     {'params': bn_params, 'lr': 1e-5},
                     {'params': layer3_params, 'lr': 1e-5},
                     {'params': layer4_params, 'lr': 1e-5}
