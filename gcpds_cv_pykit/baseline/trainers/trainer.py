@@ -57,6 +57,69 @@ class SegmentationModel_Trainer:
             return "WandB tracking enabled."
         else:
             raise ValueError("wandb_monitoring must be None or a list of exactly three strings.")
+
+    def print_device_info(self) -> None:
+        """Print detailed device information including GPU details if available."""
+        
+        print("=" * 50)
+        print("DEVICE INFORMATION")
+        print("=" * 50)
+        
+        # Current device being used
+        print(f"Current device: {self.device}")
+        print(f"Device type: {self.device.type}")
+        
+        # CUDA availability and details
+        if torch.cuda.is_available():
+            print(f"CUDA available: Yes")
+            print(f"CUDA version: {torch.version.cuda}")
+            print(f"Number of CUDA devices: {torch.cuda.device_count()}")
+            
+            # Current CUDA device details
+            if self.device.type == 'cuda':
+                current_device = self.device.index if self.device.index is not None else torch.cuda.current_device()
+                print(f"Current CUDA device index: {current_device}")
+                print(f"Current CUDA device name: {torch.cuda.get_device_name(current_device)}")
+                
+                # Memory information
+                memory_allocated = torch.cuda.memory_allocated(current_device) / 1024**3  # GB
+                memory_reserved = torch.cuda.memory_reserved(current_device) / 1024**3   # GB
+                memory_total = torch.cuda.get_device_properties(current_device).total_memory / 1024**3  # GB
+                
+                print(f"GPU Memory - Allocated: {memory_allocated:.2f} GB")
+                print(f"GPU Memory - Reserved: {memory_reserved:.2f} GB") 
+                print(f"GPU Memory - Total: {memory_total:.2f} GB")
+                
+                # GPU properties
+                props = torch.cuda.get_device_properties(current_device)
+                print(f"GPU Compute Capability: {props.major}.{props.minor}")
+                print(f"GPU Multiprocessors: {props.multi_processor_count}")
+            
+            # List all available CUDA devices
+            if torch.cuda.device_count() > 1:
+                print("\nAll available CUDA devices:")
+                for i in range(torch.cuda.device_count()):
+                    print(f"  Device {i}: {torch.cuda.get_device_name(i)}")
+                    
+        else:
+            print(f"CUDA available: No")
+            print(f"Using CPU for computation")
+        
+        # PyTorch version
+        print(f"PyTorch version: {torch.__version__}")
+        
+        # Model device (if model exists)
+        if hasattr(self, 'model') and self.model is not None:
+            model_device = next(self.model.parameters()).device
+            print(f"Model is on device: {model_device}")
+            
+            # Check if model and target device match
+            if model_device == self.device:
+                print("✓ Model and target device match")
+            else:
+                print("✗ WARNING: Model and target device mismatch!")
+        
+        print("=" * 50)
         
     def model_handling(self) -> nn.Module:
 
@@ -69,7 +132,6 @@ class SegmentationModel_Trainer:
                 self.model = UNet(
                     in_channels=self.config.get('Input size', [3])[0],
                     out_channels=self.config.get('Number of classes', 1),
-                    backbone= self.config.get('Backbone', None),
                     pretrained=self.config.get('Pretrained', True),
                     final_activation= self.config.get('Activation function', None),
                 )
