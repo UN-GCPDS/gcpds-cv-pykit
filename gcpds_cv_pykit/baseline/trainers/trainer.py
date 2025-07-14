@@ -873,3 +873,5 @@ class SegmentationModel_Trainer:
         self.wandb_logging()
 
         self.training()
+
+        self.perform_across_epochs()
