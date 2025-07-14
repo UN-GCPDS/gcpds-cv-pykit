@@ -157,7 +157,7 @@ class SegmentationModel_Trainer:
 
             case 'Focal':
                 return FocalLoss(
-                    alpha=self.config.get('Alpha', 0.25),
+                    alpha=self.config.get('Alpha', 0.75),
                     gamma=self.config.get('Gamma', 2.0),
                     reduction=self.config.get('Reduction', 'mean')
                 )
@@ -404,7 +404,7 @@ class SegmentationModel_Trainer:
                     prediction = self.model(sample)
             else:
                 prediction = self.model(sample)
-        if self.config.get('Loss function', None) == 'Focal':
+        if self.config.get('Loss function', None) in ['Focal', 'CrossEntropy']:
             prediction = torch.sigmoid(prediction)
         sample_np = sample.cpu().numpy().transpose(0, 2, 3, 1)
         prediction_np = prediction.cpu().numpy()
@@ -448,7 +448,7 @@ class SegmentationModel_Trainer:
         y_true = y_true.float()
         
         # Apply sigmoid for Focal loss
-        if self.config.get('Loss function', None) == 'Focal':
+        if self.config.get('Loss function', None) in ['Focal', 'CrossEntropy']:
             y_pred = torch.sigmoid(y_pred)
         y_pred = y_pred.float()
         

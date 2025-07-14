@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.amp import autocast
 import numpy as np
 
-from gcpds_cv_pykit.baseline.losses import DICELoss, CrossEntropyLoss, FocalLoss, TverskyLoss
+from .losses import DICELoss, CrossEntropyLoss, FocalLoss, TverskyLoss
 
 
 class PerformanceModels:
@@ -144,6 +144,8 @@ class PerformanceModels:
                     y_pred = y_pred
 
                 y_true = gt_masks.float()
+                if self.config.get('Loss function', None) in ['Focal', 'CrossEntropy']:
+                    y_pred = torch.sigmoid(y_pred)
                 y_pred = y_pred.float()
 
                 # Create mask for valid pixels (ignoring specific values)
