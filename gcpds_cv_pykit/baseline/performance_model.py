@@ -96,7 +96,6 @@ class PerformanceModels:
         This method processes the test dataset, calculates metrics for each batch,
         and aggregates results both globally and per class.
         """
-        self.device = torch.device(self.config.get('Device', 'cpu'))
         self.save_results = self.config.get('Save results', False)
         self.smooth = self.config.get('Smooth', 1.0)
 
