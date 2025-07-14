@@ -855,6 +855,8 @@ class SegmentationModel_Trainer:
             self.scaler = GradScaler() if self.amp_ else None
             print("Automatic Mixed Precision (AMP) enabled.")
 
+        self.print_device_info()
+
         self.run = None
         self.wandb_monitoring = self.config.get('Wandb monitoring', None)
         self.single_class_train = self.config.get('Single class train', None)

@@ -2,10 +2,10 @@
 U-Net implementation with ResNet34 backbone for image segmentation.
 
 This module provides a PyTorch implementation of the U-Net architecture with
-ResNet34 pre-trained backbone.
+ResNet34 pre-trained backbone following segmentation-models-pytorch design patterns.
 """
 
-from typing import List, Optional, Tuple, Union, Literal
+from typing import List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -90,29 +90,31 @@ class ResNet34Encoder(nn.Module):
         """
         skips = []
         
-        # Layer 0: Initial conv + bn + relu
-        x = self.layer0(x)  # 64 channels
+        # Layer 0: Initial conv + bn + relu (stride=2, H/2, W/2)
+        x = self.layer0(x)  # 64 channels, H/2, W/2
         skips.append(x)
         
-        # MaxPool and subsequent layers
-        x = self.maxpool(x)
+        # MaxPool (stride=2, H/4, W/4)
+        x = self.maxpool(x)  # H/4, W/4
         
-        x = self.layer1(x)  # 64 channels
+        x = self.layer1(x)  # 64 channels, H/4, W/4
         skips.append(x)
         
-        x = self.layer2(x)  # 128 channels
+        x = self.layer2(x)  # 128 channels, H/8, W/8
         skips.append(x)
         
-        x = self.layer3(x)  # 256 channels
+        x = self.layer3(x)  # 256 channels, H/16, W/16
         skips.append(x)
         
-        x = self.layer4(x)  # 512 channels (bottleneck)
+        x = self.layer4(x)  # 512 channels, H/32, W/32 (bottleneck)
         
         return x, skips
 
 
 class DecoderBlock(nn.Module):
     """Single decoder block with upsampling and skip connection.
+    
+    Following segmentation-models-pytorch design: uses F.interpolate for precise size matching.
 
     Args:
         in_channels: Number of input channels from previous layer.
@@ -122,10 +124,7 @@ class DecoderBlock(nn.Module):
 
     def __init__(self, in_channels: int, skip_channels: int, out_channels: int) -> None:
         super().__init__()
-        self.upsample = nn.ConvTranspose2d(
-            in_channels, out_channels, kernel_size=2, stride=2
-        )
-        self.conv = DoubleConv(out_channels + skip_channels, out_channels)
+        self.conv = DoubleConv(in_channels + skip_channels, out_channels)
 
     def forward(self, x: torch.Tensor, skip: torch.Tensor) -> torch.Tensor:
         """Forward pass through decoder block.
@@ -135,21 +134,25 @@ class DecoderBlock(nn.Module):
             skip: Skip connection tensor from encoder.
 
         Returns:
-            Decoded tensor.
+            Decoded tensor with same spatial size as skip connection.
         """
-        x = self.upsample(x)
+        # Upsample to match skip connection size exactly (like SMP does)
+        target_size = skip.shape[2:]
+        x = F.interpolate(x, size=target_size, mode='bilinear', align_corners=False)
         
-        # Handle size mismatch between upsampled and skip connection
-        if x.shape[2:] != skip.shape[2:]:
-            x = F.interpolate(x, size=skip.shape[2:], mode='bilinear', align_corners=False)
-        
+        # Concatenate with skip connection
         x = torch.cat([x, skip], dim=1)
+        
+        # Apply convolutions
         x = self.conv(x)
         return x
 
 
 class Decoder(nn.Module):
     """Decoder module for U-Net with skip connections.
+    
+    Following segmentation-models-pytorch design: no learnable upsampling layers,
+    uses F.interpolate in decoder blocks for precise size matching.
 
     Args:
         encoder_channels: List of encoder output channels [layer0, layer1, layer2, layer3, layer4].
@@ -175,24 +178,28 @@ class Decoder(nn.Module):
         """Forward pass through the decoder.
 
         Args:
-            x: Input tensor from encoder bottleneck.
+            x: Input tensor from encoder bottleneck (H/32, W/32).
             skips: List of skip connection tensors from encoder [skip0, skip1, skip2, skip3].
+                  skip0: H/2, W/2 (64 channels)
+                  skip1: H/4, W/4 (64 channels)  
+                  skip2: H/8, W/8 (128 channels)
+                  skip3: H/16, W/16 (256 channels)
 
         Returns:
-            Decoded tensor.
+            Decoded tensor with size H/2, W/2 (matching skip0).
         """
-        # skips = [skip0, skip1, skip2, skip3] = [64, 64, 128, 256] channels
-        x = self.layer4(x, skips[3])  # Use skip3 (256 channels)
-        x = self.layer3(x, skips[2])  # Use skip2 (128 channels)
-        x = self.layer2(x, skips[1])  # Use skip1 (64 channels)
-        x = self.layer1(x, skips[0])  # Use skip0 (64 channels)
+        # Process from deepest to shallowest
+        x = self.layer4(x, skips[3])  # H/32 -> H/16 (match skip3)
+        x = self.layer3(x, skips[2])  # H/16 -> H/8 (match skip2)
+        x = self.layer2(x, skips[1])  # H/8 -> H/4 (match skip1)
+        x = self.layer1(x, skips[0])  # H/4 -> H/2 (match skip0)
         
-        return x
+        return x  # Output: H/2, W/2
 
 
 class SegmentationHead(nn.Module):
-    """Final 1x1 convolution layer to produce segmentation output.
-
+    """Final segmentation head that upsamples to original resolution.
+    
     Args:
         in_channels: Number of input channels.
         out_channels: Number of output channels (classes).
@@ -202,16 +209,23 @@ class SegmentationHead(nn.Module):
         super().__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, target_size: Tuple[int, int]) -> torch.Tensor:
         """Forward pass through the segmentation head.
 
         Args:
-            x: Input tensor.
+            x: Input tensor (H/2, W/2).
+            target_size: Target output size (H, W).
 
         Returns:
-            Segmentation output tensor.
+            Segmentation output tensor (H, W).
         """
-        return self.conv(x)
+        # Apply 1x1 conv
+        x = self.conv(x)
+        
+        # Upsample to original input size
+        x = F.interpolate(x, size=target_size, mode='bilinear', align_corners=False)
+        
+        return x
 
 
 def get_activation(activation: Optional[Union[str, nn.Module]]) -> Optional[nn.Module]:
@@ -248,6 +262,11 @@ def get_activation(activation: Optional[Union[str, nn.Module]]) -> Optional[nn.M
 
 class UNet(nn.Module):
     """U-Net architecture with ResNet34 backbone for image segmentation.
+    
+    Following segmentation-models-pytorch design principles:
+    - No interpolation in main forward pass
+    - Precise size matching through decoder block design
+    - Final upsampling in segmentation head
 
     Args:
         in_channels: Number of input channels.
@@ -290,17 +309,19 @@ class UNet(nn.Module):
         Returns:
             Segmentation output tensor of shape (batch_size, out_channels, height, width).
         """
-        # Encoder
-        x, skips = self.encoder(x)
+        input_size = x.shape[2:]  # Store original input size (H, W)
         
-        # Decoder
-        x = self.decoder(x, skips)
+        # Encoder: H,W -> H/32,W/32
+        encoded, skips = self.encoder(x)
         
-        # Segmentation head
-        x = self.segmentation_head(x)
+        # Decoder: H/32,W/32 -> H/2,W/2 (using skip connections)
+        decoded = self.decoder(encoded, skips)
+        
+        # Segmentation head: H/2,W/2 -> H,W
+        output = self.segmentation_head(decoded, input_size)
         
         # Final activation
         if self.final_activation is not None:
-            x = self.final_activation(x)
+            output = self.final_activation(output)
         
-        return x
+        return output
