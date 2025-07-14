@@ -1,14 +1,14 @@
 import gc
 import os
 from typing import Dict, List, Union, Optional, Any, Tuple
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 import torch
 import torch.nn as nn
-from torch.cuda.amp import autocast
+from torch.amp import autocast
 import numpy as np
 
-from .losses import DICELoss, CrossEntropyLoss, FocalLoss, TverskyLoss
+from gcpds_cv_pykit.baseline.losses import DICELoss, CrossEntropyLoss, FocalLoss, TverskyLoss
 
 
 class PerformanceModels:
@@ -38,7 +38,7 @@ class PerformanceModels:
         self.test_dataset = test_dataset
         self.config = config
         
-        self.device = self.config.get('Device', 'cpu')
+        self.device = torch.device(self.config.get('Device', 'cpu'))
         # Move model to device and set to evaluation mode
         self.model.to(self.device)
         self.model.eval()
@@ -126,6 +126,7 @@ class PerformanceModels:
             with torch.no_grad():
                 # Forward pass with or without mixed precision
                 if self.config.get("AMixPre", False):
+
                     with autocast(self.device.type):
                         y_pred = self.model(images)
                         loss = self.loss_fn(y_pred, gt_masks)
