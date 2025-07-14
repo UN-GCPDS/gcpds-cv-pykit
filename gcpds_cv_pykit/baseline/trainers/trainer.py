@@ -305,8 +305,17 @@ class SegmentationModel_Trainer:
                 self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.94)
 
     def perform_across_epochs(self) -> None:
-
+        # Create results directory if it doesn't exist
         os.makedirs("results", exist_ok=True)
+        
+        # Find the next available experiment number
+        experiment_num = 1
+        while os.path.exists(f"results/experiment_{experiment_num}"):
+            experiment_num += 1
+        
+        # Create the experiment folder
+        experiment_folder = f"results/experiment_{experiment_num}"
+        os.makedirs(experiment_folder)
 
         plt.figure(figsize=(10, 6))
         plt.plot(range(self.epochs), self.train_loss, label='Training Loss', marker='o')
@@ -317,7 +326,7 @@ class SegmentationModel_Trainer:
         plt.ylabel('Loss')
         plt.legend()
         plt.tight_layout()
-        plt.savefig('results/Loss.png')
+        plt.savefig(f'{experiment_folder}/Loss.png')
         plt.close()
 
         plt.figure(figsize=(10, 6))
@@ -333,7 +342,7 @@ class SegmentationModel_Trainer:
         plt.ylabel('DICE')
         plt.legend()
         plt.tight_layout()
-        plt.savefig('results/DICE.png')
+        plt.savefig(f'{experiment_folder}/DICE.png')
         plt.close()
 
         plt.figure(figsize=(10, 6))
@@ -349,7 +358,7 @@ class SegmentationModel_Trainer:
         plt.ylabel('Jaccard')
         plt.legend()
         plt.tight_layout()
-        plt.savefig('results/Jaccard.png')
+        plt.savefig(f'{experiment_folder}/Jaccard.png')
         plt.close()
 
         plt.figure(figsize=(10, 6))
@@ -365,7 +374,7 @@ class SegmentationModel_Trainer:
         plt.ylabel('Sensitivity')
         plt.legend()
         plt.tight_layout()
-        plt.savefig('results/Sensitivity.png')
+        plt.savefig(f'{experiment_folder}/Sensitivity.png')
         plt.close()
 
         plt.figure(figsize=(10, 6))
@@ -381,7 +390,7 @@ class SegmentationModel_Trainer:
         plt.ylabel('Specificity')
         plt.legend()
         plt.tight_layout()
-        plt.savefig('results/Specificity.png')
+        plt.savefig(f'{experiment_folder}/Specificity.png')
         plt.close()
 
     def visualizations(
