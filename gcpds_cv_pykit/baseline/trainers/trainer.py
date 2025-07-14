@@ -436,7 +436,7 @@ class SegmentationModel_Trainer:
         if self.wandb_monitoring:
             self.run.log({f"Predictions_Epoch_{epoch}": wandb.Image(fig)})
 
-    def calculate_metrics_corrected(
+    def calculate_metrics(
         self, 
         y_pred: torch.Tensor, 
         y_true: torch.Tensor, 
