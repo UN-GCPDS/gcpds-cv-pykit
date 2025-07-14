@@ -127,7 +127,7 @@ class PerformanceModels:
             with torch.no_grad():
                 # Forward pass with or without mixed precision
                 if self.config.get("AMixPre", False):
-                    with autocast(device_type='cuda'):
+                    with autocast(self.device.type):
                         y_pred = self.model(images)
                         loss = self.loss_fn(y_pred, gt_masks)
                         loss = loss if not torch.isnan(loss) else torch.tensor(0.0, device=self.device)
@@ -217,38 +217,31 @@ class PerformanceModels:
         mask: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Calculate metrics for a single batch.
+        Calculate metrics for a single batch using simplified approach.
         
         Args:
-            y_true: Ground truth segmentation masks
-            y_pred: Predicted segmentation masks
-            mask: Mask of valid pixels
+            y_true: Ground truth segmentation masks [B, C, H, W]
+            y_pred: Predicted segmentation masks [B, C, H, W]
+            mask: Mask of valid pixels [B, C, H, W]
             
         Returns:
-            Tuple containing dice, jaccard, sensitivity, and specificity tensors
+            Tuple containing dice, jaccard, sensitivity, and specificity tensors [B, C]
         """
-        # Calculate basic components for metrics
-        intersection = torch.sum(y_true * y_pred * mask, dim=(2, 3))
-        sum_true = torch.sum(y_true * mask, dim=(2, 3))
-        sum_pred = torch.sum(y_pred * mask, dim=(2, 3))
+        # Apply mask to both predictions and targets
+        y_true_masked = y_true * mask
+        y_pred_masked = y_pred * mask
         
-        # Calculate Dice coefficient
-        union_dice = sum_true + sum_pred
-        dice_batch = (2.0 * intersection + self.smooth) / (union_dice + self.smooth)
+        # Calculate confusion matrix components
+        tp = torch.sum(y_true_masked * y_pred_masked, dim=(2, 3))
+        fp = torch.sum((1 - y_true_masked) * y_pred_masked, dim=(2, 3))
+        fn = torch.sum(y_true_masked * (1 - y_pred_masked), dim=(2, 3))
+        tn = torch.sum((1 - y_true_masked) * (1 - y_pred_masked), dim=(2, 3))
         
-        # Calculate Jaccard index
-        union_jaccard = sum_true + sum_pred - intersection
-        jaccard_batch = (intersection + self.smooth) / (union_jaccard + self.smooth)
-        
-        # Calculate sensitivity (recall)
-        true_positives = intersection
-        actual_positives = sum_true
-        sensitivity_batch = true_positives / (actual_positives + self.smooth)
-        
-        # Calculate specificity
-        true_negatives = torch.sum((1 - y_true) * (1 - y_pred) * mask, dim=(2, 3))
-        actual_negatives = torch.sum((1 - y_true) * mask, dim=(2, 3))
-        specificity_batch = true_negatives / (actual_negatives + self.smooth)
+        # Calculate metrics (smooth handles all edge cases automatically!)
+        dice_batch = (2 * tp + self.smooth) / (2 * tp + fp + fn + self.smooth)
+        jaccard_batch = (tp + self.smooth) / (tp + fp + fn + self.smooth)
+        sensitivity_batch = (tp + self.smooth) / (tp + fn + self.smooth)
+        specificity_batch = (tn + self.smooth) / (tn + fp + self.smooth)
         
         return dice_batch, jaccard_batch, sensitivity_batch, specificity_batch
     
