@@ -446,7 +446,8 @@ class SegmentationModel_Trainer:
     ) -> Tuple[torch.Tensor, ...]:
 
         y_true = y_true.float()
-        y_pred = torch.sigmoid(y_pred)
+        if self.config.get('Loss function', None) == 'Focal':
+            y_pred = torch.sigmoid(y_pred)
         y_pred = y_pred.float()
         ignore_tensor = torch.tensor(ignore_value, device=y_true.device)
         mask = (y_true != ignore_tensor)
