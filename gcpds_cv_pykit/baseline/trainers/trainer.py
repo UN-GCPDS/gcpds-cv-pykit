@@ -404,13 +404,13 @@ class SegmentationModel_Trainer:
                     prediction = self.model(sample)
             else:
                 prediction = self.model(sample)
-
-        prediction = torch.sigmoid(prediction)
+        if self.config.get('Loss function', None) == 'Focal':
+            prediction = torch.sigmoid(prediction)
         sample_np = sample.cpu().numpy().transpose(0, 2, 3, 1)
         prediction_np = prediction.cpu().numpy()
         mask_sample_np = mask_sample.cpu().numpy()
 
-        elements_display = min(prediction_np.shape[1], 9)
+        elements_display = min(prediction_np.shape[1] if prediction_np.shape[1]!= 1 else 2, 9)
         fig, axs = plt.subplots(3, elements_display, figsize=(16, 5))
 
         axs[0,0].imshow(sample_np[0])

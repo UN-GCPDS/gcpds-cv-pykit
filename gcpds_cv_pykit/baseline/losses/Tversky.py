@@ -68,11 +68,3 @@ class TverskyLoss(nn.Module):
             return loss
         else:
             raise ValueError(f"Invalid reduction: {self.reduction}")
-
-# Example usage:
-if __name__ == "__main__":
-    loss_fn = TverskyLoss(alpha=0.7, beta=0.3, reduction='mean')
-    preds = torch.sigmoid(torch.randn(2, 3, 128, 128))  # probabilities
-    targets = torch.randint(0, 2, (2, 3, 128, 128)).float()
-    loss = loss_fn(preds, targets)
-    print(loss)
