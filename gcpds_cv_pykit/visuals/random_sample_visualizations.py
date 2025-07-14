@@ -152,7 +152,7 @@ def random_sample_visualization(
         else:
             fig.suptitle("Image and Segmentation Masks for Random Classes", fontsize=16)
 
-        fig.tight_layout(rect=(0, 0.03, 1, 0.95))
+        fig.tight_layout()
         plt.show()
 
         # Free memory
