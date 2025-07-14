@@ -466,9 +466,6 @@ class SegmentationModel_Trainer:
         fn = torch.sum(y_true * (1 - y_pred) * mask, dim=(2, 3))  # False Negatives
         tn = torch.sum((1 - y_true) * (1 - y_pred) * mask, dim=(2, 3))  # True Negatives
         
-        # Debug prints for monitoring
-        print(f"TP: {tp.mean():.1f}, FP: {fp.mean():.1f}, FN: {fn.mean():.1f}, TN: {tn.mean():.1f}")
-        
         # Calculate metrics per sample and class
         dice = (2 * tp + smooth) / (2 * tp + fp + fn + smooth)
         jaccard = (tp + smooth) / (tp + fp + fn + smooth)

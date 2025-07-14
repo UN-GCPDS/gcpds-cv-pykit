@@ -23,8 +23,7 @@ class PerformanceModels:
         self, 
         model: nn.Module, 
         test_dataset: torch.utils.data.DataLoader, 
-        config: Dict[str, Any], 
-        save_results: bool = False
+        config: Dict[str, Any]
     ):
         """
         Initialize the PerformanceModels class.
@@ -33,14 +32,11 @@ class PerformanceModels:
             model: The neural network model to evaluate
             test_dataset: DataLoader containing test data
             config: Configuration dictionary with evaluation parameters
-            save_results: Whether to save evaluation results to disk
+
         """
         self.model = model
         self.test_dataset = test_dataset
         self.config = config
-        self.save_results = save_results
-        self.device = torch.device('cuda:0')
-        self.smooth = 1e-7
         
         # Move model to device and set to evaluation mode
         self.model.to(self.device)
@@ -62,7 +58,7 @@ class PerformanceModels:
         Raises:
             ValueError: If an unknown loss function is specified
         """
-        loss_fn = self.config.get('Loss Function', 'DICE')
+        loss_fn = self.config.get('Loss function', 'DICE')
 
         match loss_fn:
             case 'DICE':
@@ -99,6 +95,10 @@ class PerformanceModels:
         This method processes the test dataset, calculates metrics for each batch,
         and aggregates results both globally and per class.
         """
+        self.device = torch.device(self.config.get('Device', 'cpu'))
+        self.save_results = self.config.get('Save results', False)
+        self.smooth = self.config.get('Smooth', 1.0)
+
         loss_results: List[float] = []
 
         # Initialize lists for global metrics
@@ -117,11 +117,10 @@ class PerformanceModels:
         specificity_per_class: List[List[float]] = [[] for _ in range(num_classes)]
 
         for data_batch in tqdm(self.test_dataset, desc="Testing model's performance"):
-            # Unpack batch data (images, masks, ground truth masks)
-            images, masks, gt_masks = data_batch
+            # Unpack batch data (images, ground truth masks)
+            images, gt_masks = data_batch
 
             images = images.to(self.device)
-            masks = masks.to(self.device)
             gt_masks = gt_masks.to(self.device)
 
             with torch.no_grad():
@@ -129,11 +128,11 @@ class PerformanceModels:
                 if self.config.get("AMixPre", False):
                     with autocast(device_type='cuda'):
                         y_pred = self.model(images)
-                        loss = self.loss_fn(y_pred, masks)
+                        loss = self.loss_fn(y_pred, gt_masks)
                         loss = loss if not torch.isnan(loss) else torch.tensor(0.0, device=self.device)
                 else:
                     y_pred = self.model(images)
-                    loss = self.loss_fn(y_pred, masks)
+                    loss = self.loss_fn(y_pred, gt_masks)
                     loss = loss if not torch.isnan(loss) else torch.tensor(0.0, device=self.device)
 
                 # Class selection
@@ -141,13 +140,13 @@ class PerformanceModels:
                     class_idx = self.config["Single class test"]
                     y_pred = y_pred[:, class_idx:class_idx+1]
                 else:
-                    y_pred = y_pred[:, :num_classes]
+                    y_pred = y_pred
 
                 y_true = gt_masks.float()
                 y_pred = y_pred.float()
 
                 # Create mask for valid pixels (ignoring specific values)
-                ignore_value = torch.tensor(0.6, device=self.device)
+                ignore_value = torch.tensor(self.config.get('Ignored value',0.6), device=self.device)
                 mask = (y_true != ignore_value).float()
 
                 # Threshold predictions
@@ -358,7 +357,7 @@ class PerformanceModels:
         if not os.path.exists(f"{drive_dir}/results"):
             os.makedirs(f"{drive_dir}/results")
 
-        filename_base = f"{drive_dir}/results/{self.config.get('Main_model', 'model')}_{self.config.get('Dataset', 'dataset')}"
+        filename_base = f"{drive_dir}/results/{self.config.get('Dataset', '')}_{self.config.get('Model', '')}_{self.config.get('Loss function', 'DICE')}"
 
         # Save global metrics
         np.save(f"{filename_base}_Loss.npy", loss_results)
