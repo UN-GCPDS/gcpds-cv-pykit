@@ -436,71 +436,63 @@ class SegmentationModel_Trainer:
         if self.wandb_monitoring:
             self.run.log({f"Predictions_Epoch_{epoch}": wandb.Image(fig)})
 
-    def calculate_metrics(
-        self,
-        y_true: torch.Tensor,
-        y_pred: torch.Tensor,
-        ignore_value: float = 0.6,
-        threshold: float = 0.5,
-        smooth: float = 1e-7
-    ) -> Tuple[torch.Tensor, ...]:
-
+    def calculate_metrics_corrected(
+        self, 
+        y_pred: torch.Tensor, 
+        y_true: torch.Tensor, 
+        threshold: float = 0.5, 
+        ignore_value: int = -1, 
+        smooth: float = 1e-8
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        
         y_true = y_true.float()
+        
+        # Apply sigmoid for Focal loss
         if self.config.get('Loss function', None) == 'Focal':
             y_pred = torch.sigmoid(y_pred)
         y_pred = y_pred.float()
+        
+        # Create mask to ignore specified values
         ignore_tensor = torch.tensor(ignore_value, device=y_true.device)
-        mask = (y_true != ignore_tensor)
-        valid_images = torch.any(mask, dim=(2, 3))
-        mask = mask.float()
-        valid_count = torch.sum(valid_images.float(), dim=0)
+        mask = (y_true != ignore_tensor).float()
+        
+        # Convert to binary masks using threshold
         y_true = (y_true > threshold).float()
         y_pred = (y_pred > threshold).float()
-
-        intersection = torch.sum(y_true * y_pred * mask, dim=(2, 3))
-        sum_true = torch.sum(y_true * mask, dim=(2, 3))
-        sum_pred = torch.sum(y_pred * mask, dim=(2, 3))
-
-        union_dice = sum_true + sum_pred
-        dice_per_class = torch.zeros_like(valid_count)
-        for c in range(valid_count.shape[0]):
-            if valid_count[c] > 0:
-                class_dice = (2.0 * intersection[:, c] + smooth) / (union_dice[:, c] + smooth)
-                dice_per_class[c] = torch.sum(class_dice) / (valid_count[c] + smooth)
-
-        union_jaccard = sum_true + sum_pred - intersection
-        jaccard_per_class = torch.zeros_like(valid_count)
-        for c in range(valid_count.shape[0]):
-            if valid_count[c] > 0:
-                class_jaccard = (intersection[:, c] + smooth) / (union_jaccard[:, c] + smooth)
-                jaccard_per_class[c] = torch.sum(class_jaccard) / (valid_count[c] + smooth)
-
-        true_positives = intersection
-        actual_positives = sum_true
-        sensitivity_per_class = torch.zeros_like(valid_count)
-        for c in range(valid_count.shape[0]):
-            if valid_count[c] > 0:
-                class_sensitivity = true_positives[:, c] / (actual_positives[:, c] + smooth)
-                sensitivity_per_class[c] = torch.sum(class_sensitivity) / (valid_count[c] + smooth)
-
-        true_negatives = torch.sum((1 - y_true) * (1 - y_pred) * mask, dim=(2, 3))
-        actual_negatives = torch.sum((1 - y_true) * mask, dim=(2, 3))
-        specificity_per_class = torch.zeros_like(valid_count)
-        for c in range(valid_count.shape[0]):
-            if valid_count[c] > 0:
-                class_specificity = true_negatives[:, c] / (actual_negatives[:, c] + smooth)
-                specificity_per_class[c] = torch.sum(class_specificity) / (valid_count[c] + smooth)
-
-        dice_per_class = torch.where(torch.isnan(dice_per_class), torch.tensor(0.0, device=dice_per_class.device), dice_per_class)
-        jaccard_per_class = torch.where(torch.isnan(jaccard_per_class), torch.tensor(0.0, device=jaccard_per_class.device), jaccard_per_class)
-        sensitivity_per_class = torch.where(torch.isnan(sensitivity_per_class), torch.tensor(0.0, device=sensitivity_per_class.device), sensitivity_per_class)
-        specificity_per_class = torch.where(torch.isnan(specificity_per_class), torch.tensor(0.0, device=specificity_per_class.device), specificity_per_class)
-
-        dice_avg = torch.mean(dice_per_class)
-        jaccard_avg = torch.mean(jaccard_per_class)
-        sensitivity_avg = torch.mean(sensitivity_per_class)
-        specificity_avg = torch.mean(specificity_per_class)
-
+        
+        # Calculate confusion matrix components
+        tp = torch.sum(y_true * y_pred * mask, dim=(2, 3))  # True Positives
+        fp = torch.sum((1 - y_true) * y_pred * mask, dim=(2, 3))  # False Positives
+        fn = torch.sum(y_true * (1 - y_pred) * mask, dim=(2, 3))  # False Negatives
+        tn = torch.sum((1 - y_true) * (1 - y_pred) * mask, dim=(2, 3))  # True Negatives
+        
+        # Debug prints for monitoring
+        print(f"TP: {tp.mean():.1f}, FP: {fp.mean():.1f}, FN: {fn.mean():.1f}, TN: {tn.mean():.1f}")
+        
+        # Calculate metrics per sample and class
+        dice = (2 * tp + smooth) / (2 * tp + fp + fn + smooth)
+        jaccard = (tp + smooth) / (tp + fp + fn + smooth)
+        sensitivity = (tp + smooth) / (tp + fn + smooth)  # Recall/True Positive Rate
+        specificity = (tn + smooth) / (tn + fp + smooth)  # True Negative Rate
+        
+        # Handle NaN values by replacing with 0.0
+        dice = torch.where(torch.isnan(dice), torch.tensor(0.0, device=dice.device), dice)
+        jaccard = torch.where(torch.isnan(jaccard), torch.tensor(0.0, device=jaccard.device), jaccard)
+        sensitivity = torch.where(torch.isnan(sensitivity), torch.tensor(0.0, device=sensitivity.device), sensitivity)
+        specificity = torch.where(torch.isnan(specificity), torch.tensor(0.0, device=specificity.device), specificity)
+        
+        # Calculate averages across batch and classes
+        dice_avg = torch.mean(dice)
+        jaccard_avg = torch.mean(jaccard)
+        sensitivity_avg = torch.mean(sensitivity)
+        specificity_avg = torch.mean(specificity)
+        
+        # Calculate per-class averages (averaged across batch dimension)
+        dice_per_class = torch.mean(dice, dim=0)
+        jaccard_per_class = torch.mean(jaccard, dim=0)
+        sensitivity_per_class = torch.mean(sensitivity, dim=0)
+        specificity_per_class = torch.mean(specificity, dim=0)
+        
         return (
             dice_avg, jaccard_avg, sensitivity_avg, specificity_avg,
             dice_per_class, jaccard_per_class, sensitivity_per_class, specificity_per_class
