@@ -38,6 +38,7 @@ class PerformanceModels:
         self.test_dataset = test_dataset
         self.config = config
         
+        self.device = self.config.get('Device', 'cpu')
         # Move model to device and set to evaluation mode
         self.model.to(self.device)
         self.model.eval()
