@@ -416,7 +416,7 @@ class SegmentationModel_Trainer:
         axs[0,0].imshow(sample_np[0])
         axs[0,0].set_title('Input image')
 
-        for idx, element in enumerate(random.sample(range(self.config['Number of classes']), elements_display)):
+        for idx, element in enumerate(random.sample(range(self.config['Number of classes']), elements_display if elements_display >= 2 else 1)):
             axs[1,idx].imshow(np.where(prediction_np[0, element] > 0.5, 1, 0), vmin=0.0, vmax=1.0)
             axs[1,idx].set_title(f'Pred class {element}')
 

@@ -119,7 +119,7 @@ def random_sample_visualization(
         fig, axes = plt.subplots(
             nrows=n_rows,
             ncols=n_cols,
-            figsize=(4 * n_cols, 5),
+            figsize=(2 * n_cols, 5),
             squeeze=False
         )
 
