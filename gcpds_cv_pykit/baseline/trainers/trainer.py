@@ -164,8 +164,8 @@ class SegmentationModel_Trainer:
             
             case 'Tversky':
                 return TverskyLoss(
-                    alpha=self.config.get('Alpha', 0.5),
-                    beta=self.config.get('Beta', 0.5),
+                    alpha=self.config.get('Alpha', 0.7),
+                    beta=self.config.get('Beta', 0.3),
                     smooth=self.config.get('Smooth', 1.0),
                     reduction=self.config.get('Reduction', 'mean')
                 )
