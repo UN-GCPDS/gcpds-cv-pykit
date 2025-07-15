@@ -145,6 +145,8 @@ class SegmentationModel_Trainer:
                     pretrained=self.config.get('Pretrained', True),
                     final_activation= self.config.get('Activation function', None),
                 )
+
+                return self.model
             
             case 'DeepLabV3+':
 
@@ -155,6 +157,8 @@ class SegmentationModel_Trainer:
                     final_activation= self.config.get('Activation function', None),
                 )
 
+                return self.model
+
             case 'FCN':
 
                 self.model = FCN(
@@ -163,6 +167,8 @@ class SegmentationModel_Trainer:
                     pretrained=self.config.get('Pretrained', True),
                     final_activation= self.config.get('Activation function', None),
                 )
+
+                return self.model
 
             case _:
                 raise ValueError(f"Unknown model type: {model}")
