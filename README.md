@@ -442,7 +442,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔄 Changelog
 
-### Version 0.1.0.36 (Current)
+### Version 0.1.0.37 (Current)
 - Complete segmentation model implementations (UNet, ResUNet, DeepLabV3Plus, FCN)
 - Full loss function suite (DICE, CrossEntropy, Focal, Tversky)
 - Training pipeline with Trainer class
@@ -452,10 +452,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Performance evaluation framework with comprehensive metrics
 - Mixed precision training support
 - Weights & Biases integration for experiment tracking
-
-### Previous Versions
-- **0.1.0.35**: Enhanced model architectures and loss functions
-- **0.1.0.34**: Initial dataset utilities and visualization tools
 
 ### Upcoming Features
 - Additional model architectures (Attention U-Net, U-Net++)
