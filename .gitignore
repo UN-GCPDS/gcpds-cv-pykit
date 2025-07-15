@@ -137,6 +137,7 @@ raw_data/
 processed_data/
 
 # Model checkpoints and weights
+# Model checkpoints and weights
 *.pth
 *.pt
 *.h5
@@ -144,8 +145,10 @@ processed_data/
 *.pkl
 *.pickle
 checkpoints/
-models/
+# models/  # Commented out - was too broad and excluded source code
 saved_models/
+model_weights/
+trained_models/
 weights/
 
 # Training logs and outputs
