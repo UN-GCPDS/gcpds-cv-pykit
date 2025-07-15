@@ -3,7 +3,7 @@ import re
 import glob
 import torch
 import random
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 from pathlib import Path
 from typing import Union, List, Tuple, Optional, Sequence
 from torch.utils.data import Dataset, DataLoader
