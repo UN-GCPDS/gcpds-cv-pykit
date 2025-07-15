@@ -442,7 +442,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔄 Changelog
 
-### Version 0.1.0.36 (Current)
+### Version 0.1.0.38 (Current)
 - Complete segmentation model implementations (UNet, ResUNet, DeepLabV3Plus, FCN)
 - Full loss function suite (DICE, CrossEntropy, Focal, Tversky)
 - Training pipeline with Trainer class
