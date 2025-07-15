@@ -13,16 +13,54 @@ import torchvision.transforms.functional as TF
 
 class Segmentation_Dataset(Dataset):
     """
-    Custom Dataset for semantic segmentation with support for multi-class and single-class masks.
+    Custom PyTorch Dataset for semantic segmentation tasks with support for multi-class
+    and single-class masks.
+
+    This dataset handles loading and preprocessing of images and their corresponding
+    segmentation masks. It supports data augmentation, multi-class segmentation,
+    and flexible directory structures.
+
+    Attributes:
+        data_dir (Path): Root directory of the dataset
+        image_size (Tuple[int, int]): Target size for images and masks (height, width)
+        num_classes (int): Total number of segmentation classes
+        partition (str): Dataset partition ('Train', 'Val', 'Test', etc.)
+        single_class (Optional[int]): If specified, only loads masks for this class
+        augment (bool): Whether to apply data augmentation (only for training)
+        images_folder (str): Name of the folder containing images
+        patch_files (List[str]): List of image file paths
+        file_sample (List[str]): List of image filenames
+        num_samples (int): Total number of samples in the dataset
+        path_masks (List[List[Path]]): Nested list of mask paths organized by sample and class
 
     Args:
-        data_dir (Union[str, Path]): Root directory of the dataset.
-        image_size (Tuple[int, int]): Desired (height, width) for images and masks.
-        num_classes (int): Number of segmentation classes.
-        partition (str): Dataset partition, e.g., 'Train', 'Val', 'Test'.
-        single_class (Optional[int]): If set, only loads masks for this class.
-        augment (bool): Whether to apply data augmentation (only in training).
+        data_dir (Union[str, Path]): Root directory of the dataset
+        image_size (Tuple[int, int]): Desired (height, width) for images and masks
+        num_classes (int): Number of segmentation classes
+        partition (str): Dataset partition, e.g., 'Train', 'Val', 'Test'
+        single_class (Optional[int], optional): If set, only loads masks for this class.
+            Defaults to None.
+        augment (bool, optional): Whether to apply data augmentation. Only applied
+            during training. Defaults to True.
+        images_folder (Optional[str], optional): Name of the folder containing images.
+            Defaults to 'patches'.
+
+    Raises:
+        FileNotFoundError: If the specified data directory or partition doesn't exist
+        ValueError: If image_size contains non-positive values or num_classes is invalid
+
+    Example:
+        >>> dataset = Segmentation_Dataset(
+        ...     data_dir="/path/to/data",
+        ...     image_size=(256, 256),
+        ...     num_classes=3,
+        ...     partition="Train",
+        ...     augment=True
+        ... )
+        >>> image, mask = dataset[0]
+        >>> print(f"Image shape: {image.shape}, Mask shape: {mask.shape}")
     """
+
     def __init__(
         self,
         data_dir: Union[str, Path],
@@ -30,7 +68,8 @@ class Segmentation_Dataset(Dataset):
         num_classes: int,
         partition: str,
         single_class: Optional[int] = None,
-        augment: bool = True
+        augment: bool = True,
+        images_folder: Optional[str] = None
     ) -> None:
         """
         Initialize the dataset, collect image and mask file paths, and prepare for loading.
@@ -50,9 +89,11 @@ class Segmentation_Dataset(Dataset):
         self.partition = partition
         self.single_class = single_class
         self.augment = augment and (partition.lower() == 'train')
+        self.images_folder = images_folder if (isinstance(images_folder,str)) else 'patches'
 
         # Find all patch image files
-        patch_path_pattern = self.data_dir / self.partition / 'patches' / '*.png'
+
+        patch_path_pattern = self.data_dir / self.partition / self.images_folder / '*.png'
         self.patch_files = sorted(
             glob.glob(str(patch_path_pattern)),
             key=self._alphanumeric_key
@@ -199,6 +240,7 @@ def Segmentation_DataLoader(
     partition: str,
     single_class: Optional[int] = None,
     augment: bool = True,
+    images_folder: Optional[str] = None,
     num_workers: int = 0,
     prefetch_factor: int = 2,
     pin_memory: bool = True
@@ -214,6 +256,7 @@ def Segmentation_DataLoader(
         partition (str): Dataset partition, e.g., 'Train', 'Val', 'Test'.
         single_class (Optional[int]): If set, only loads masks for this class.
         augment (bool): Whether to apply data augmentation (only in training).
+        images_folder (Optional[str], optional): Name of the folder containing images.
         num_workers (int): Number of worker processes for data loading.
         prefetch_factor (int): Number of batches loaded in advance by each worker.
         pin_memory (bool): Whether to use pinned memory for faster GPU transfer.
@@ -227,7 +270,8 @@ def Segmentation_DataLoader(
         num_classes=num_classes,
         partition=partition,
         single_class=single_class,
-        augment=augment
+        augment=augment,
+        images_folder=images_folder
     )
     return DataLoader(
         dataset,

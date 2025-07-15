@@ -10,8 +10,8 @@ A comprehensive toolkit for computer vision and segmentation tasks, developed by
 - **Training Pipeline**: Complete training workflow with validation and monitoring
 - **Experiment Tracking**: Integration with Weights & Biases (wandb)
 - **Mixed Precision Training**: Automatic Mixed Precision (AMP) support for faster training
-- **Flexible Configuration**: YAML/JSON-based configuration system
-- **Visualization Tools**: Built-in visualization utilities for model predictions
+- **Dataset Management**: Built-in Kaggle dataset download and preparation utilities
+- **Visualization Tools**: Random sample visualization utilities for dataset exploration
 - **Memory Management**: Efficient memory handling and cleanup utilities
 
 ## 📋 Requirements
@@ -22,7 +22,7 @@ A comprehensive toolkit for computer vision and segmentation tasks, developed by
 
 ## 🔧 Installation
 
-### From PyPI (when available)
+### From PyPI
 ```bash
 pip install gcpds-cv-pykit
 ```
@@ -54,94 +54,170 @@ pip install -e ".[dev,docs]"
 - `Pillow>=9.0.0` - Image handling
 - `scipy>=1.9.0` - Scientific computing
 - `pandas>=1.4.0` - Data manipulation
+- `kagglehub` - Kaggle dataset downloads
 
 ### Optional Dependencies
-- **Development**: `pytest`, `black`, `flake8`, `isort`
-- **Documentation**: `sphinx`, `sphinx-rtd-theme`
+- **Development**: `pytest>=7.0.0`, `pytest-cov>=4.0.0`, `black>=22.0.0`, `flake8>=5.0.0`, `isort>=5.10.0`
+- **Documentation**: `sphinx>=5.0.0`, `sphinx-rtd-theme>=1.0.0`
 
 ## 🏗️ Project Structure
 
 ```
 gcpds_cv_pykit/
 ├── baseline/
-│   ├── trainers/           # Training utilities
-│   ├── models/             # Model architectures
-│   ├── losses/             # Loss functions
-│   ├── dataloaders/        # Data loading utilities
-│   └── performance_model.py # Model evaluation
-├── crowd/                  # Crowd-specific implementations
-├── datasets/               # Dataset utilities
-└── visuals/               # Visualization tools
+│   ├── trainers/           # Training utilities (empty - under development)
+│   ├── models/             # Model architectures (empty - under development)
+│   ├── losses/             # Loss functions (empty - under development)
+│   ├── dataloaders/        # Data loading utilities (empty - under development)
+│   └── performance_model.py # Model evaluation and performance metrics
+├── crowd/                  # Crowd-specific implementations (under development)
+├── datasets/               # Dataset utilities and Kaggle integration
+│   ├── datasets.py         # Kaggle dataset download and preparation
+│   └── __init__.py
+├── visuals/               # Visualization tools
+│   ├── random_sample_visualizations.py  # Dataset visualization utilities
+│   └── __init__.py
+├── _version.py            # Version information
+└── __init__.py
 ```
 
 ## 🚀 Quick Start
 
-### Basic Training Example
+### Dataset Download and Preparation
 
 ```python
-from gcpds_cv_pykit.baseline.trainers import SegmentationModel_Trainer
-from torch.utils.data import DataLoader
+from gcpds_cv_pykit.datasets import download_and_prepare_dataset
 
-# Define your configuration
-config = {
-    'Model': 'UNet',
-    'Backbone': 'resnet34',
-    'Number of classes': 2,
-    'Loss Function': 'DICE',
-    'Optimizer': 'Adam',
-    'Learning Rate': 0.001,
-    'Epochs': 100,
-    'Batch Size': 8,
-    'Input size': [3, 256, 256],
-    'AMP': True,
-    'Device': 'cuda'
-}
-
-# Initialize trainer
-trainer = SegmentationModel_Trainer(
-    train_loader=train_dataloader,
-    valid_loader=valid_dataloader,
-    config=config
-)
-
-# Start training
-trainer.start()
+# Download a Kaggle dataset
+dataset_path = download_and_prepare_dataset('username/dataset-name/versions/1')
+print(f"Dataset prepared at: {dataset_path}")
 ```
 
-### Model Evaluation Example
+### Dataset Visualization
+
+```python
+from gcpds_cv_pykit.visuals import random_sample_visualization
+from torch.utils.data import DataLoader
+
+# Visualize random samples from your dataset
+random_sample_visualization(
+    dataset=your_dataloader,
+    num_classes=2,
+    single_class=None,  # Show all classes
+    max_classes_to_show=7,
+    type="baseline"
+)
+```
+
+### Model Performance Evaluation
 
 ```python
 from gcpds_cv_pykit.baseline import PerformanceModels
 
 # Evaluate trained model
+config = {
+    'Device': 'cuda',
+    'Loss Function': 'DICE',
+    'Number of classes': 2,
+    # ... other configuration parameters
+}
+
 evaluator = PerformanceModels(
     model=trained_model,
     test_dataset=test_dataloader,
-    config=config,
-    save_results=True
+    config=config
 )
-```
-
-### Custom Loss Function
-
-```python
-from gcpds_cv_pykit.baseline.losses import DICELoss, FocalLoss
-
-# DICE Loss
-dice_loss = DICELoss(smooth=1.0, reduction='mean')
-
-# Focal Loss
-focal_loss = FocalLoss(alpha=0.25, gamma=2.0, reduction='mean')
 ```
 
 ## 📊 Supported Models
 
-- **UNet**: Classic U-Net architecture with various backbone options
-  - Backbones: ResNet, EfficientNet, and more
-  - Pretrained weights support
-  - Customizable activation functions
+The toolkit provides several state-of-the-art segmentation model architectures, all with ResNet34 backbone support:
+
+### **UNet**
+- **Architecture**: Classic U-Net with ResNet34 encoder
+- **Features**:
+  - Skip connections for precise localization
+  - Pretrained ResNet34 backbone support
+  - Configurable encoder/decoder channels
+  - Optional final activation functions (sigmoid, softmax, tanh)
+  - Bilinear interpolation for upsampling
+- **Use Case**: General-purpose segmentation tasks
+
+### **ResUNet**
+- **Architecture**: Residual U-Net with ResNet34 backbone
+- **Features**:
+  - Enhanced skip connections with residual blocks
+  - ResNet34 pretrained encoder
+  - Improved gradient flow through residual connections
+  - Batch normalization and ReLU activations
+- **Use Case**: Complex segmentation tasks requiring deeper feature learning
+
+### **DeepLabV3Plus**
+- **Architecture**: DeepLab v3+ with Atrous Spatial Pyramid Pooling (ASPP)
+- **Features**:
+  - ASPP module for multi-scale feature extraction
+  - Separable convolutions for efficiency
+  - ResNet34 backbone with dilated convolutions
+  - Low-level feature fusion
+  - Configurable atrous rates
+- **Use Case**: High-resolution segmentation with multi-scale context
+
+### **FCN (Fully Convolutional Network)**
+- **Architecture**: FCN with ResNet34 backbone
+- **Features**:
+  - Multi-scale skip connections (FCN-8s, FCN-16s, FCN-32s style)
+  - Transposed convolutions for upsampling
+  - ResNet34 pretrained encoder
+  - Feature fusion at multiple scales
+- **Use Case**: Semantic segmentation with multi-scale feature integration
+
+### **Common Model Features**
+- **Backbone**: ResNet34 with ImageNet pretrained weights
+- **Input Channels**: Configurable (default: 3 for RGB)
+- **Output Channels**: Configurable number of classes
+- **Activation Functions**: Support for sigmoid, softmax, tanh, or none
+- **Mixed Precision**: Compatible with AMP training
+- **Memory Efficient**: Optimized for GPU memory usage
+
+### **Model Usage Example**
+```python
+from gcpds_cv_pykit.baseline.models import UNet, ResUNet, DeepLabV3Plus, FCN
+
+# UNet with default settings
+model = UNet(
+    in_channels=3,
+    out_channels=2,  # Binary segmentation
+    pretrained=True,
+    final_activation='sigmoid'
+)
+
+# DeepLabV3Plus for multi-class segmentation
+model = DeepLabV3Plus(
+    in_channels=3,
+    out_channels=5,  # 5-class segmentation
+    pretrained=True,
+    final_activation='softmax'
+)
+
+# ResUNet for complex segmentation
+model = ResUNet(
+    in_channels=3,
+    out_channels=1,
+    pretrained=True
+)
+
+# FCN for semantic segmentation
+model = FCN(
+    in_channels=3,
+    out_channels=10,
+    pretrained=True,
+    final_activation='softmax'
+)
+```
 
 ## 🎯 Loss Functions
+
+The following loss functions are supported through the baseline.losses module:
 
 - **DICE Loss**: Optimized for segmentation tasks
 - **Cross Entropy**: Standard classification loss
@@ -150,14 +226,14 @@ focal_loss = FocalLoss(alpha=0.25, gamma=2.0, reduction='mean')
 
 ## 📈 Metrics
 
-The toolkit provides comprehensive evaluation metrics:
+The toolkit provides comprehensive evaluation metrics through the PerformanceModels class:
 
 - **Dice Coefficient**: Overlap-based similarity measure
 - **Jaccard Index (IoU)**: Intersection over Union
 - **Sensitivity (Recall)**: True positive rate
 - **Specificity**: True negative rate
 
-All metrics are calculated both globally and per-class.
+All metrics are calculated both globally and per-class with detailed statistical analysis.
 
 ## 🔧 Configuration
 
@@ -201,10 +277,31 @@ config['Wandb monitoring'] = [
 ## 🎨 Visualization
 
 Built-in visualization tools for:
-- Training/validation curves
+- Random dataset sample visualization
+- Multi-class segmentation mask display
+- Training/validation curves (through wandb integration)
 - Model predictions vs ground truth
-- Metric evolution across epochs
-- Sample predictions
+
+Example usage:
+```python
+from gcpds_cv_pykit.visuals import random_sample_visualization
+
+# Visualize a single class
+random_sample_visualization(
+    dataset=dataloader,
+    num_classes=5,
+    single_class=1,  # Show only class 1
+    type="baseline"
+)
+
+# Visualize multiple classes
+random_sample_visualization(
+    dataset=dataloader,
+    num_classes=5,
+    max_classes_to_show=3,
+    type="baseline"
+)
+```
 
 ## 🧪 Testing
 
@@ -270,23 +367,31 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - PyTorch team for the excellent deep learning framework
 - The computer vision community for inspiration and best practices
+- Kaggle for providing accessible datasets through kagglehub
 - Contributors and users of this toolkit
 
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/UN-GCPDS/gcpds-cv-pykit/issues)
 - **Documentation**: [Read the Docs](https://gcpds-cv-pykit.readthedocs.io/)
-- **Email**: your-email@example.com
+- **Email**: gcpds_man@unal.edu.co
 
 ## 🔄 Changelog
 
-### Version 0.1.0 (Alpha)
-- Initial release
-- Basic UNet implementation
-- Core loss functions
-- Training and evaluation pipeline
-- Weights & Biases integration
+### Version 0.1.0.34 (Current)
+- Dataset download and preparation utilities via Kaggle integration
+- Random sample visualization tools for dataset exploration
+- Performance evaluation framework with comprehensive metrics
+- Loss function implementations (DICE, CrossEntropy, Focal, Tversky)
+- Mixed precision training support
+- Weights & Biases integration for experiment tracking
+
+### Upcoming Features
+- Complete trainer implementations
+- Additional model architectures
+- Enhanced data loading utilities
+- Extended visualization capabilities
 
 ---
 
-**Note**: This project is in active development. APIs may change between versions. Please check the documentation for the latest updates.
+**Note**: This project is in active development. Some modules (trainers, models, dataloaders) are currently under development. APIs may change between versions. Please check the documentation for the latest updates.
