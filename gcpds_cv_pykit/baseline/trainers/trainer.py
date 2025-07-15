@@ -47,7 +47,7 @@ class SegmentationModel_Trainer:
                 'Model', 'Image size', 'Number of classes',
                 'Backbone', 'Activation function', 'Loss function'
             }
-            wandb_config = {key: value for key, value in self.config.items() if key not in keys_to_include}
+            wandb_config = {key: value for key, value in self.config.items() if key in keys_to_include}
             self.run = wandb.init(
                 project=self.wandb_monitoring[1],
                 name=self.wandb_monitoring[2],
