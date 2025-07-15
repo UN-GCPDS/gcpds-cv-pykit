@@ -15,7 +15,7 @@ import numpy as np
 from tqdm.notebook import tqdm
 import matplotlib.pyplot as plt
 
-from ..models import UNet
+from ..models import UNet, ResUNet, DeepLabV3Plus, FCN
 from ..losses import (DICELoss, CrossEntropyLoss, FocalLoss, TverskyLoss)
 from typing import Union, List, Tuple, Optional, Dict, Any
 
@@ -136,6 +136,33 @@ class SegmentationModel_Trainer:
                     final_activation= self.config.get('Activation function', None),
                 )
                 return self.model
+            
+            case 'ResUNet':
+
+                self.model = ResUNet(
+                    in_channels=self.config.get('Input size', [3])[0],
+                    out_channels=self.config.get('Number of classes', 1),
+                    pretrained=self.config.get('Pretrained', True),
+                    final_activation= self.config.get('Activation function', None),
+                )
+            
+            case 'DeepLabV3+':
+
+                self.model = DeepLabV3Plus(
+                    in_channels=self.config.get('Input size', [3])[0],
+                    out_channels=self.config.get('Number of classes', 1),
+                    pretrained=self.config.get('Pretrained', True),
+                    final_activation= self.config.get('Activation function', None),
+                )
+
+            case 'FCN':
+
+                self.model = FCN(
+                    in_channels=self.config.get('Input size', [3])[0],
+                    out_channels=self.config.get('Number of classes', 1),
+                    pretrained=self.config.get('Pretrained', True),
+                    final_activation= self.config.get('Activation function', None),
+                )
 
             case _:
                 raise ValueError(f"Unknown model type: {model}")
@@ -172,7 +199,6 @@ class SegmentationModel_Trainer:
 
             case _:
                 raise ValueError(f"Unknown loss function: {loss_fn}")
-
 
     def training_phases(self, phase: int) -> None:
 

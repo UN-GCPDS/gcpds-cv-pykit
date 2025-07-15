@@ -62,3 +62,31 @@ def OxfordIITPet(
         str: Path to the prepared dataset folder.
     """
     return download_and_prepare_dataset(kaggle_dataset)
+
+def SeedGermination(
+    kaggle_dataset: str = "lucasiturriago/seeds/versions/1"
+) -> str:
+    """
+    Download and prepare the Seed Germination dataset from KaggleHub.
+
+    Args:
+        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/seeds/versions/1').
+
+    Returns:
+        str: Path to the prepared dataset folder.
+    """
+    return download_and_prepare_dataset(kaggle_dataset)
+
+def BreastCancer(
+    kaggle_dataset: str = "lucasiturriago/breast-cancer-ss/versions/1"
+) -> str:
+    """
+    Download and prepare the Breast Cancer Semantic Segmentation dataset from KaggleHub.
+
+    Args:
+        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/breast-cancer-ss/versions/1').
+
+    Returns:
+        str: Path to the prepared dataset folder.
+    """
+    return download_and_prepare_dataset(kaggle_dataset)
