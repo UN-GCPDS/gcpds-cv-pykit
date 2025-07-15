@@ -1,7 +1,7 @@
 import gc
 import os
 from typing import Dict, List, Union, Optional, Any, Tuple
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 import torch
 import torch.nn as nn

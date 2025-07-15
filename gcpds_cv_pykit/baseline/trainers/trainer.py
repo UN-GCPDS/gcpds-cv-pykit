@@ -12,7 +12,7 @@ import wandb
 import random
 import subprocess
 import numpy as np
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 from ..models import UNet, ResUNet, DeepLabV3Plus, FCN
