@@ -4,10 +4,11 @@ A comprehensive toolkit for computer vision and segmentation tasks, developed by
 
 ## 🚀 Features
 
-- **Segmentation Models**: Support for UNet and other popular architectures
+- **Segmentation Models**: Support for UNet, ResUNet, DeepLabV3Plus, and FCN architectures
 - **Multiple Loss Functions**: DICE, Cross Entropy, Focal Loss, and Tversky Loss
 - **Performance Evaluation**: Comprehensive metrics including Dice, Jaccard, Sensitivity, and Specificity
 - **Training Pipeline**: Complete training workflow with validation and monitoring
+- **Data Loading**: Efficient data loading utilities for segmentation tasks
 - **Experiment Tracking**: Integration with Weights & Biases (wandb)
 - **Mixed Precision Training**: Automatic Mixed Precision (AMP) support for faster training
 - **Dataset Management**: Built-in Kaggle dataset download and preparation utilities
@@ -65,10 +66,24 @@ pip install -e ".[dev,docs]"
 ```
 gcpds_cv_pykit/
 ├── baseline/
-│   ├── trainers/           # Training utilities (empty - under development)
-│   ├── models/             # Model architectures (empty - under development)
-│   ├── losses/             # Loss functions (empty - under development)
-│   ├── dataloaders/        # Data loading utilities (empty - under development)
+│   ├── trainers/           # Training utilities
+│   │   ├── trainer.py      # Main training class
+│   │   └── __init__.py
+│   ├── models/             # Model architectures
+│   │   ├── UNet.py         # U-Net implementation
+│   │   ├── ResUNet.py      # Residual U-Net
+│   │   ├── DeepLabV3Plus.py # DeepLab v3+ implementation
+│   │   ├── FCN.py          # Fully Convolutional Network
+│   │   └── __init__.py
+│   ├── losses/             # Loss functions
+│   │   ├── DICE.py         # DICE loss implementation
+│   │   ├── CrossEntropy.py # Cross entropy loss
+│   │   ├── Focal.py        # Focal loss implementation
+│   │   ├── Tversky.py      # Tversky loss implementation
+│   │   └── __init__.py
+│   ├── dataloaders/        # Data loading utilities
+│   │   ├── dataloader.py   # Custom data loading implementations
+│   │   └── __init__.py
 │   └── performance_model.py # Model evaluation and performance metrics
 ├── crowd/                  # Crowd-specific implementations (under development)
 ├── datasets/               # Dataset utilities and Kaggle integration
@@ -107,6 +122,38 @@ random_sample_visualization(
     max_classes_to_show=7,
     type="baseline"
 )
+```
+
+### Model Training
+
+```python
+from gcpds_cv_pykit.baseline.trainers import Trainer
+from gcpds_cv_pykit.baseline.models import UNet
+
+# Initialize model
+model = UNet(in_channels=3, out_channels=2, pretrained=True)
+
+# Configure training
+config = {
+    'Device': 'cuda',
+    'Loss Function': 'DICE',
+    'Number of classes': 2,
+    'Learning Rate': 0.001,
+    'Epochs': 100,
+    'Batch Size': 8,
+    # ... other configuration parameters
+}
+
+# Initialize trainer
+trainer = Trainer(
+    model=model,
+    train_dataset=train_dataloader,
+    val_dataset=val_dataloader,
+    config=config
+)
+
+# Start training
+trainer.train()
 ```
 
 ### Model Performance Evaluation
@@ -217,12 +264,29 @@ model = FCN(
 
 ## 🎯 Loss Functions
 
-The following loss functions are supported through the baseline.losses module:
+The following loss functions are available through the baseline.losses module:
 
-- **DICE Loss**: Optimized for segmentation tasks
-- **Cross Entropy**: Standard classification loss
-- **Focal Loss**: Addresses class imbalance
-- **Tversky Loss**: Generalization of Dice loss
+- **DICE Loss**: Optimized for segmentation tasks with class imbalance
+- **Cross Entropy**: Standard classification loss for multi-class segmentation
+- **Focal Loss**: Addresses class imbalance by focusing on hard examples
+- **Tversky Loss**: Generalization of Dice loss with configurable precision/recall balance
+
+### **Loss Function Usage**
+```python
+from gcpds_cv_pykit.baseline.losses import DICELoss, CrossEntropyLoss, FocalLoss, TverskyLoss
+
+# DICE Loss for binary segmentation
+dice_loss = DICELoss()
+
+# Cross Entropy for multi-class segmentation
+ce_loss = CrossEntropyLoss()
+
+# Focal Loss for handling class imbalance
+focal_loss = FocalLoss(alpha=0.25, gamma=2.0)
+
+# Tversky Loss with custom alpha/beta
+tversky_loss = TverskyLoss(alpha=0.3, beta=0.7)
+```
 
 ## 📈 Metrics
 
@@ -378,20 +442,28 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔄 Changelog
 
-### Version 0.1.0.34 (Current)
+### Version 0.1.0.36 (Current)
+- Complete segmentation model implementations (UNet, ResUNet, DeepLabV3Plus, FCN)
+- Full loss function suite (DICE, CrossEntropy, Focal, Tversky)
+- Training pipeline with Trainer class
+- Data loading utilities for segmentation tasks
 - Dataset download and preparation utilities via Kaggle integration
 - Random sample visualization tools for dataset exploration
 - Performance evaluation framework with comprehensive metrics
-- Loss function implementations (DICE, CrossEntropy, Focal, Tversky)
 - Mixed precision training support
 - Weights & Biases integration for experiment tracking
 
+### Previous Versions
+- **0.1.0.35**: Enhanced model architectures and loss functions
+- **0.1.0.34**: Initial dataset utilities and visualization tools
+
 ### Upcoming Features
-- Complete trainer implementations
-- Additional model architectures
-- Enhanced data loading utilities
-- Extended visualization capabilities
+- Additional model architectures (Attention U-Net, U-Net++)
+- Advanced data augmentation utilities
+- Model ensemble capabilities
+- Extended visualization and analysis tools
+- Pre-trained model zoo
 
 ---
 
-**Note**: This project is in active development. Some modules (trainers, models, dataloaders) are currently under development. APIs may change between versions. Please check the documentation for the latest updates.
+**Note**: This project is actively maintained and regularly updated. The API is stable for the current feature set. Please check the documentation and changelog for the latest updates and new features.
