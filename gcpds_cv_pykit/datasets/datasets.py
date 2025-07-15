@@ -90,3 +90,17 @@ def BreastCancer(
         str: Path to the prepared dataset folder.
     """
     return download_and_prepare_dataset(kaggle_dataset)
+
+def FeetMamitas(
+    kaggle_dataset: str = "lucasiturriago/feet-mamitas/versions/1"
+) -> str:
+    """
+    Download and prepare the Feet Mamitas dataset from KaggleHub.
+
+    Args:
+        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/feet-mamitas/versions/1').
+
+    Returns:
+        str: Path to the prepared dataset folder.
+    """
+    return download_and_prepare_dataset(kaggle_dataset)

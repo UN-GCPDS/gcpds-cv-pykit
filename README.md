@@ -361,7 +361,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **GCPDS Team** - *Initial work* - [gcpds_man@unal.edu.co](mailto:gcpds_man@unal.edu.co)
+- **GCPDS Team** - [gcpds_man@unal.edu.co](mailto:gcpds_man@unal.edu.co)
 
 ## 🙏 Acknowledgments
 

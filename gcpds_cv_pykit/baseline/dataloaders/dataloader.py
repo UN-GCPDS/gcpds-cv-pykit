@@ -91,18 +91,23 @@ class Segmentation_Dataset(Dataset):
         self.augment = augment and (partition.lower() == 'train')
         self.images_folder = images_folder if (isinstance(images_folder,str)) else 'patches'
 
-        # Find all patch image files
+        # Find all patch image files - support multiple image formats
+        supported_formats = ['*.png', '*.jpg', '*.jpeg']
+        self.patch_files = []
 
-        patch_path_pattern = self.data_dir / self.partition / self.images_folder / '*.png'
-        self.patch_files = sorted(
-            glob.glob(str(patch_path_pattern)),
-            key=self._alphanumeric_key
-        )
+        for format_pattern in supported_formats:
+            patch_path_pattern = self.data_dir / self.partition / self.images_folder / format_pattern
+            format_files = glob.glob(str(patch_path_pattern))
+            self.patch_files.extend(format_files)
+
+        # Sort all files together using alphanumeric sorting
+        self.patch_files = sorted(self.patch_files, key=self._alphanumeric_key)
         self.file_sample = [Path(f).name for f in self.patch_files]
         self.num_samples = len(self.patch_files)
 
-        print(f"Complete path for patches: {patch_path_pattern}")
-        print(f"Number of patch files found: {self.num_samples}")
+        print(f"Searching for images in: {self.data_dir / self.partition / self.images_folder}")
+        print(f"Supported formats: {', '.join(supported_formats)}")
+        print(f"Number of image files found: {self.num_samples}")
 
         # Prepare mask paths for each sample
         mask_path_main = self.data_dir / self.partition / 'masks' 
