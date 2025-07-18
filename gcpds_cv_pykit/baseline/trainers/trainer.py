@@ -335,6 +335,10 @@ class SegmentationModel_Trainer:
                 ]
                 self.optimizer = optim.Adam(params)
                 self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.94)
+            
+            case False:
+                self.optimizer = optim.Adam(self.model.parameters())
+                self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.94)
 
     def perform_across_epochs(self) -> None:
         # Create results directory if it doesn't exist
@@ -643,21 +647,24 @@ class SegmentationModel_Trainer:
         for epoch in range(self.epochs):
             print(f"\nEpoch {epoch + 1}/{self.epochs}")
 
-            match epoch:
-                case 0:
-                    print("Training phase 1")
-                    self.training_phases(1)
-                case 10:
-                    print("Training phase 2")
-                    self.training_phases(2)
-                case 20:
-                    print("Training phase 3")
-                    self.training_phases(3)
-                case 30:
-                    print("Training phase 4")
-                    self.training_phases(4)
-                case _:
-                    pass
+            if self.train_phases:
+                match epoch:
+                    case 0:
+                        print("Training phase 1")
+                        self.training_phases(1)
+                    case 10:
+                        print("Training phase 2")
+                        self.training_phases(2)
+                    case 20:
+                        print("Training phase 3")
+                        self.training_phases(3)
+                    case 30:
+                        print("Training phase 4")
+                        self.training_phases(4)
+                    case _:
+                        pass
+            else:
+                self.training_phases(False)
 
             total_train_loss = 0.0
             num_train_batches = 0
@@ -708,7 +715,9 @@ class SegmentationModel_Trainer:
             avg_train_sensitivity_per_class = total_train_sensitivity_per_class / num_train_batches
             avg_train_specificity_per_class = total_train_specificity_per_class / num_train_batches
 
-            if epoch > 30:
+            if (epoch > 30) and self.train_phases:
+                self.scheduler.step()
+            else:
                 self.scheduler.step()
 
             total_val_loss = 0.0
@@ -900,6 +909,8 @@ class SegmentationModel_Trainer:
         self.model = self.model_handling()
         self.model.to(self.device)
         self.loss_fn = self.loss_handling()
+
+        self.train_phases = self.config.get('Train phases', False)
 
         self.wandb_logging()
 
