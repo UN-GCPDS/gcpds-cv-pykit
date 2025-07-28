@@ -715,8 +715,9 @@ class SegmentationModel_Trainer:
             avg_train_sensitivity_per_class = total_train_sensitivity_per_class / num_train_batches
             avg_train_specificity_per_class = total_train_specificity_per_class / num_train_batches
 
-            if (epoch > 30) and self.train_phases:
-                self.scheduler.step()
+            if self.train_phases:
+                if epoch > 30:
+                    self.scheduler.step()
             else:
                 self.scheduler.step()
 
