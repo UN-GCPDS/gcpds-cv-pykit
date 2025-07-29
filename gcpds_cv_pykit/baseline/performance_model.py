@@ -164,10 +164,10 @@ class PerformanceModels:
 
                 # Store per-class metrics
                 for c in range(num_classes):
-                    dice_per_class[c].append(dice_batch[:, c].mean().item())
-                    jaccard_per_class[c].append(jaccard_batch[:, c].mean().item())
-                    sensitivity_per_class[c].append(sensitivity_batch[:, c].mean().item())
-                    specificity_per_class[c].append(specificity_batch[:, c].mean().item())
+                    dice_per_class[c].extend(dice_batch[:, c].tolist())
+                    jaccard_per_class[c].extend(jaccard_batch[:, c].tolist())
+                    sensitivity_per_class[c].extend(sensitivity_batch[:, c].tolist())
+                    specificity_per_class[c].extend(specificity_batch[:, c].tolist())
 
                 # Handle NaN values
                 dice = torch.where(torch.isnan(dice), torch.tensor(0.0, device=self.device), dice)
@@ -177,10 +177,10 @@ class PerformanceModels:
 
                 # Save global metrics
                 loss_results.append(loss.item())
-                dice_results.append(dice.mean().item())
-                jaccard_results.append(jaccard.mean().item())
-                sensitivity_results.append(sensitivity.mean().item())
-                specificity_results.append(specificity.mean().item())
+                dice_results.extend(dice.tolist())
+                jaccard_results.extend(jaccard.tolist())
+                sensitivity_results.extend(sensitivity.tolist())
+                specificity_results.extend(specificity.tolist())
 
         # Convert to numpy arrays
         loss_results_np = np.array(loss_results)
@@ -252,7 +252,7 @@ class PerformanceModels:
         metrics: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Aggregate batch metrics by averaging across the batch dimension.
+        Aggregate batch metrics by averaging across the channel dimension.
         
         Args:
             metrics: Tuple of batch metrics (dice, jaccard, sensitivity, specificity)
@@ -262,10 +262,10 @@ class PerformanceModels:
         """
         dice_batch, jaccard_batch, sensitivity_batch, specificity_batch = metrics
         
-        dice = torch.mean(dice_batch, dim=0)
-        jaccard = torch.mean(jaccard_batch, dim=0)
-        sensitivity = torch.mean(sensitivity_batch, dim=0)
-        specificity = torch.mean(specificity_batch, dim=0)
+        dice = torch.mean(dice_batch, dim=1)
+        jaccard = torch.mean(jaccard_batch, dim=1)
+        sensitivity = torch.mean(sensitivity_batch, dim=1)
+        specificity = torch.mean(specificity_batch, dim=1)
         
         return dice, jaccard, sensitivity, specificity
     
