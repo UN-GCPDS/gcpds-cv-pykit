@@ -440,26 +440,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation**: [Read the Docs](https://gcpds-cv-pykit.readthedocs.io/)
 - **Email**: gcpds_man@unal.edu.co
 
-## 🔄 Changelog
-
-### Version 0.1.0.39 (Current)
-- Complete segmentation model implementations (UNet, ResUNet, DeepLabV3Plus, FCN)
-- Full loss function suite (DICE, CrossEntropy, Focal, Tversky)
-- Training pipeline with Trainer class
-- Data loading utilities for segmentation tasks
-- Dataset download and preparation utilities via Kaggle integration
-- Random sample visualization tools for dataset exploration
-- Performance evaluation framework with comprehensive metrics
-- Mixed precision training support
-- Weights & Biases integration for experiment tracking
-
-### Upcoming Features
-- Additional model architectures (Attention U-Net, U-Net++)
-- Advanced data augmentation utilities
-- Model ensemble capabilities
-- Extended visualization and analysis tools
-- Pre-trained model zoo
-
 ---
 
 **Note**: This project is actively maintained and regularly updated. The API is stable for the current feature set. Please check the documentation and changelog for the latest updates and new features.

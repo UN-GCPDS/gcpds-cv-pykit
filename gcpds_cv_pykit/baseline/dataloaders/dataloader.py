@@ -81,6 +81,7 @@ class Segmentation_Dataset(Dataset):
             partition (str): Dataset partition, e.g., 'Train', 'Val', 'Test'.
             single_class (Optional[int]): If set, only loads masks for this class.
             augment (bool): Whether to apply data augmentation (only in training).
+            images_folder (Optional[str], optional): Name of the folder containing images.
         """
         super().__init__()
         self.data_dir = Path(data_dir)
