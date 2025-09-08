@@ -146,10 +146,10 @@ processed_data/
 *.pickle
 checkpoints/
 # models/  # Commented out - was too broad and excluded source code
-saved_models/
-model_weights/
-trained_models/
-weights/
+# saved_models/
+# model_weights/
+# trained_models/
+# weights/
 
 # Training logs and outputs
 logs/
