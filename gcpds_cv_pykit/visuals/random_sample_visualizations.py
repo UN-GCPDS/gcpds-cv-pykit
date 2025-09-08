@@ -3,163 +3,188 @@ import torch
 import random
 import matplotlib.pyplot as plt
 from typing import Optional, Union, Iterator, Tuple
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
 
 def random_sample_visualization(
-    dataset: Union[DataLoader, Iterator[Tuple[torch.Tensor, torch.Tensor]]],
+    dataset: Union[DataLoader, Iterator[Tuple[torch.Tensor, ...]]],
     num_classes: int,
     single_class: Optional[int] = None,
     max_classes_to_show: int = 7,
-    type: Optional[str] = None
+    type: Optional[str] = None,
+    num_annotators: Optional[int] = None,
+    annotators: bool = False,
+    ground_truth: bool = False
 ) -> None:
     """
     Visualize a random sample from a dataset with its corresponding segmentation masks.
-    
-    This function displays an image alongside its segmentation masks for visualization
-    purposes during dataset exploration or model debugging. It supports both single-class
-    and multi-class visualization modes.
-    
+
+    Supports two visualization modes:
+    - type="baseline": Show the image and randomly selected segmentation masks.
+    - type="annot_harmony": Show image, annotators' masks, and optionally ground truth masks.
+
     Args:
-        dataset (Union[DataLoader, Iterator[Tuple[torch.Tensor, torch.Tensor]]]): 
-            A PyTorch DataLoader or iterator that yields batches of (images, masks).
-            Images should have shape (B, C, H, W) and masks should have shape (B, num_classes, H, W).
-        num_classes (int): 
-            Total number of classes in the segmentation task. Must be positive.
-        single_class (Optional[int], optional): 
-            If specified, only visualize the mask for this specific class index.
-            Must be in range [0, num_classes-1]. If None, visualizes multiple classes.
-            Defaults to None.
-        max_classes_to_show (int, optional): 
-            Maximum number of classes to display when single_class is None.
-            Will randomly sample up to this many classes for visualization.
-            Must be positive. Defaults to 7.
-        type (Optional[str], optional): 
-            Visualization type selector. Currently only supports type=1 for batch visualization.
-            If None or any value other than 'baseline', raises ValueError. Defaults to None.
-    
-    Returns:
-        None: This function displays the visualization using matplotlib and doesn't return anything.
-    
+        dataset (Union[DataLoader, Iterator]): PyTorch DataLoader or iterator yielding batches.
+        num_classes (int): Number of segmentation classes.
+        single_class (Optional[int]): If provided, only show this class mask.
+        max_classes_to_show (int): Max number of classes to display in baseline mode.
+        type (Optional[str]): Visualization mode. Supports "baseline" and "annot_harmony".
+        num_annotators (Optional[int]): Number of annotators (required if type="annot_harmony").
+        annotators (bool): If True, display annotators' masks (only for type="annot_harmony").
+        ground_truth (bool): If True, display ground truth masks (only for type="annot_harmony").
+
     Raises:
-        ValueError: If type is not 1 or if single_class is out of valid range.
-        StopIteration: If the dataset iterator is empty.
-        IndexError: If the batch is empty or sample_idx is out of range.
-        RuntimeError: If tensor operations fail (e.g., GPU/CPU mismatch).
-    
-    Example:
-        >>> from torch.utils.data import DataLoader
-        >>> # Assuming you have a segmentation dataset
-        >>> train_loader = DataLoader(my_dataset, batch_size=4, shuffle=True)
-        >>> 
-        >>> # Visualize random classes
-        >>> random_sample_visualization(
-        ...     dataset=train_loader,
-        ...     num_classes=5,
-        ...     max_classes_to_show=3,
-        ...     type=1
-        ... )
-        >>> 
-        >>> # Visualize only class 2
-        >>> random_sample_visualization(
-        ...     dataset=train_loader,
-        ...     num_classes=5,
-        ...     single_class=2,
-        ...     type=1
-        ... )
-    
-    Note:
-        - Images can be grayscale (C=1) or RGB (C=3)
-        - Masks are expected to be binary or probability maps with values in [0, 1]
-        - The function automatically handles memory cleanup using garbage collection
-        - Visualization uses matplotlib, so ensure you're in an environment that supports it
+        ValueError: If invalid arguments are provided.
     """
-    
-    if type == 'baseline':
-        # Validate inputs
-    
+
+    # -------------------------------------------------------------------------
+    # BASELINE MODE
+    # -------------------------------------------------------------------------
+    if type == "baseline":
         if max_classes_to_show <= 0:
-            raise ValueError(f"max_classes_to_show must be positive, got {max_classes_to_show}")
-        
+            raise ValueError("max_classes_to_show must be positive")
         if num_classes <= 0:
-            raise ValueError(f"num_classes must be positive, got {num_classes}")
-        
-        # Get a batch from the dataset
-        data_iter: Iterator[Tuple[torch.Tensor, torch.Tensor]] = iter(dataset)
-        images: torch.Tensor
-        masks: torch.Tensor
+            raise ValueError("num_classes must be positive")
+
+        data_iter = iter(dataset)
         images, masks = next(data_iter)
-        
-        print(f"Images in the batch: {images.shape}, Masks in the batch: {masks.shape}")
 
-        # Validate batch is not empty
+        print(f"Images: {images.shape}, Masks: {masks.shape}")
+
         if images.shape[0] == 0:
-            raise IndexError("Batch is empty, cannot select a sample") 
+            raise IndexError("Batch is empty")
 
-        # Select a random sample within the batch
-        sample_idx: int = random.randint(0, images.shape[0] - 1)
+        sample_idx = random.randint(0, images.shape[0] - 1)
 
-        # Determine number of columns for the visualization grid
-        classes_list: list[int]
-        n_cols: int
-        
         if single_class is not None:
             classes_list = [single_class]
-            n_cols = 2  # Image + single mask
+            n_cols = 2
         else:
-            # Randomly select up to max_classes_to_show unique classes
-            available_classes: list[int] = list(range(num_classes))
-            n_classes_to_show: int = min(num_classes, max_classes_to_show)
+            available_classes = list(range(num_classes))
+            n_classes_to_show = min(num_classes, max_classes_to_show)
             classes_list = random.sample(available_classes, n_classes_to_show)
-            n_cols = 1 + n_classes_to_show  # Image + masks
+            n_cols = 1 + n_classes_to_show
 
-        n_rows: int = 1  # Only one sample visualized
+        fig, axes = plt.subplots(1, n_cols, figsize=(2 * n_cols, 5))
 
-        # Create figure and axes
-        fig, axes = plt.subplots(
-            nrows=n_rows,
-            ncols=n_cols,
-            figsize=(2 * n_cols, 5),
-            squeeze=False
-        )
-
-        # Show the original image
-        axes[0][0].set_title('Image', loc='center')
-        img: torch.Tensor = images[sample_idx]
-        
-        if img.shape[0] == 1:  # Grayscale
-            axes[0][0].imshow(img.squeeze(0).cpu().numpy(), cmap='gray')
-        else:  # RGB or multi-channel
-            # Ensure we only take first 3 channels for RGB display
+        axes[0].set_title("Image", loc="center")
+        img = images[sample_idx]
+        if img.shape[0] == 1:  # grayscale
+            axes[0].imshow(img.squeeze(0).cpu().numpy(), cmap="gray")
+        else:  # rgb
             display_img = img[:3] if img.shape[0] >= 3 else img
-            axes[0][0].imshow(display_img.permute(1, 2, 0).cpu().numpy())
+            axes[0].imshow(display_img.permute(1, 2, 0).cpu().numpy())
+        axes[0].axis("off")
 
-        # Show the masks
         for i, class_idx in enumerate(classes_list):
-            ax = axes[0][i + 1]
-            ax.set_title(f'Class {class_idx} Mask', loc='center')
-            mask_img: torch.Tensor = masks[sample_idx, class_idx, :, :]
-            ax.imshow(mask_img.cpu().numpy(), vmin=0.0, vmax=1.0, cmap='gray')
-            ax.axis('off')
+            ax = axes[i + 1]
+            ax.set_title(f"Class {class_idx}", loc="center")
+            ax.imshow(masks[sample_idx, class_idx].cpu().numpy(), cmap="gray", vmin=0, vmax=1)
+            ax.axis("off")
 
-        # Hide axes for all subplots
-        for j in range(n_cols):
-            axes[0][j].axis('off')
+        fig.suptitle(
+            f"Image and Mask for Class {single_class}" if single_class is not None
+            else "Image and Random Segmentation Masks",
+            fontsize=16
+        )
+        fig.tight_layout()
+        plt.show()
 
-        # Add a super title
-        if single_class is not None:
-            fig.suptitle(f"Image and Mask for Single Class {single_class}", fontsize=16)
+        del images, masks
+        gc.collect()
+
+    # -------------------------------------------------------------------------
+    # ANNOT_HARMONY MODE
+    # -------------------------------------------------------------------------
+    elif type == "annot_harmony":
+        if num_annotators is None:
+            raise ValueError("num_annotators must be specified when type='annot_harmony'")
+        if not (annotators or ground_truth):
+            raise ValueError("At least one of annotators or ground_truth must be True")
+
+        data_iter = iter(dataset)
+        first_batch = next(data_iter)
+
+        # Unpack batch depending on presence of ground truth
+        if annotators and ground_truth:
+            images, anns_masks, anns_onehot, gt_masks = first_batch
+            print(f"Images: {images.shape}, AnnsMasks: {anns_masks.shape}, "
+                  f"AnnsOneHot: {anns_onehot.shape}, GT: {gt_masks.shape}")
+        elif annotators and not ground_truth:
+            images, anns_masks, anns_onehot = first_batch
+            gt_masks = None
+            print(f"Images: {images.shape}, AnnsMasks: {anns_masks.shape}, AnnsOneHot: {anns_onehot.shape}")
+        elif not annotators and ground_truth:
+            images, gt_masks = first_batch
+            anns_masks, anns_onehot = None, None
+            print(f"Images: {images.shape}, GT: {gt_masks.shape}")
         else:
-            fig.suptitle("Image and Segmentation Masks for Random Classes", fontsize=16)
+            raise ValueError("Invalid configuration in annot_harmony")
+
+        sample_idx = random.randint(0, images.shape[0] - 1)
+
+        rows, cols = 1, [1]
+        row_annot = None
+        row_gt = None
+
+        if annotators and anns_masks is not None:
+            cols.append(min(7, anns_masks.shape[1] // num_classes))
+            row_annot = rows
+            rows += 1
+        if ground_truth and gt_masks is not None:
+            cols.append(min(7, gt_masks.shape[1]))
+            row_gt = rows
+            rows += 1
+        cols = int(max(cols))
+
+        fig = plt.figure(figsize=(20, 12))
+        gs = fig.add_gridspec(rows + 1, cols, hspace=0.2, wspace=0.2)
+        axes = [[fig.add_subplot(gs[r, c]) for c in range(cols)] for r in range(rows)]
+
+        # Show image
+        axes[0][0].set_title("Image", loc="center")
+        axes[0][0].imshow(images[sample_idx].permute(1, 2, 0))
+        axes[0][0].axis("off")
+
+        # Annotators masks
+        if annotators and row_annot is not None and anns_masks is not None:
+            title_ax = fig.add_subplot(gs[row_annot, :])
+            title_ax.set_title("Annotators' Segmentation Masks", loc="center")
+            title_ax.axis("off")
+
+            chosen_ann = random.sample(range(num_annotators), min(num_annotators, cols))
+            chosen_classes = [random.randint(0, num_classes - 1) for _ in chosen_ann]
+
+            for i, ann_idx in enumerate(chosen_ann):
+                mask_index = ann_idx + chosen_classes[i] * num_annotators
+                axes[row_annot][i].imshow(anns_masks[sample_idx, mask_index], cmap="gray", vmin=0, vmax=1)
+                axes[row_annot][i].axis("off")
+
+        # Ground truth masks
+        if ground_truth and row_gt is not None and gt_masks is not None:
+            if single_class is None:
+                chosen_classes = random.sample(range(num_classes), min(num_classes, cols))
+                title_ax = fig.add_subplot(gs[row_gt, :])
+                title_ax.set_title("Ground Truth Segmentation Masks", loc="center")
+                title_ax.axis("off")
+            else:
+                chosen_classes = [single_class]
+                axes[row_gt][0].set_title(f"GT Class {single_class}", loc="center")
+
+            for i, class_idx in enumerate(chosen_classes):
+                axes[row_gt][i].imshow(gt_masks[sample_idx, class_idx], cmap="gray", vmin=0, vmax=1)
+                axes[row_gt][i].axis("off")
 
         fig.tight_layout()
         plt.show()
 
-        # Free memory
-        del images, masks
+        # Cleanup
+        del images
+        if annotators:
+            del anns_masks, anns_onehot
+        if ground_truth:
+            del gt_masks
         gc.collect()
-    
+
     else:
-        raise ValueError(
-            f"Invalid type specified. Only type='baseline' is supported for random sample visualization, got {type}"
-        )
+        raise ValueError(f"Invalid type: {type}. Supported: 'baseline', 'annot_harmony'")
