@@ -75,7 +75,7 @@ class AnnotHarmonyDataset(Dataset):
         self.masks_path = []
         for sample in tqdm(self.file_sample, desc="Organizing masks"):
             masks_sample = []
-            for class_id in [1, 2]:
+            for class_id in range(self.num_classes):
                 for annotator in list_annotators:
                     mask_path = mask_path_main / annotator / f"class_{class_id}" / sample
                     masks_sample.append(str(mask_path))
@@ -90,7 +90,7 @@ class AnnotHarmonyDataset(Dataset):
                 mask_path = gt_path_main / f"class_{self.single_class}" / sample
                 masks_sample.append(str(mask_path))
             else:
-                for class_id in [1, 2]:
+                for class_id in range(self.num_classes):
                     mask_path = gt_path_main / f"class_{class_id}" / sample
                     masks_sample.append(str(mask_path))
             self.ground_truth_masks_path.append(masks_sample)
