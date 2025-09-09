@@ -50,12 +50,12 @@ class TGCE_SS(nn.Module):
         Returns:
             Tensor: Scalar loss value.
         """
-        device = y_pred.device
+        device = y_pred[0].device
         epsilon = 1e-8
 
-        # Split predictions: first K for classes, next R for reliability
-        y_pred_classes = y_pred[:, :self.K, :, :].contiguous()
-        Lambda_r = y_pred[:, self.K:, :, :]
+        # Split predictions: classes, reliability
+        y_pred_classes = y_pred[0]
+        Lambda_r = y_pred[1]
 
         # Reshape annotations into (N, K, R, H, W)
         N, _, H, W = y_pred_classes.shape

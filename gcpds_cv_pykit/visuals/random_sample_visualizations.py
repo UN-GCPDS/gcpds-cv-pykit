@@ -175,6 +175,7 @@ def random_sample_visualization(
                 axes[row_gt][i].imshow(gt_masks[sample_idx, class_idx], cmap="viridis", vmin=0, vmax=1)
                 axes[row_gt][i].axis("off")
 
+        [ax.axis('off') for row in axes for ax in row]
         fig.tight_layout()
         plt.show()
 

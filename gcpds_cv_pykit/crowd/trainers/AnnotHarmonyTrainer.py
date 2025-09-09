@@ -358,8 +358,57 @@ class AnnotHarmonyTrainer:
             plt.savefig(f'{experiment_folder}/DICE.png')
             plt.close()
 
-            # Similar plots for Jaccard, Sensitivity, Specificity can be added here
-            # Following the same pattern as in the reference trainer
+            # Jaccard plot
+            plt.figure(figsize=(10, 6))
+            plt.plot(range(self.epochs), self.train_global_jaccard, label='Training Global Jaccard', marker='o')
+            for i in range(self.config['Number of classes']):
+                plt.plot(range(self.epochs), self.train_per_class_jaccard[i], label=f'Training Class {i} Jaccard', linestyle='--')
+            if self.valid_loader is not None and self.valid_ground_truth:
+                plt.plot(range(self.epochs), self.val_global_jaccard, label='Validation Global Jaccard', marker='x')
+                for i in range(self.config['Number of classes']):
+                    plt.plot(range(self.epochs), self.val_per_class_jaccard[i], label=f'Validation Class {i} Jaccard', linestyle=':')
+            plt.title('Jaccard Over Epochs')
+            plt.xlabel('Epochs')
+            plt.ylabel('Jaccard')
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(f'{experiment_folder}/Jaccard.png')
+            plt.close()
+
+            # Sensitivity plot
+            plt.figure(figsize=(10, 6))
+            plt.plot(range(self.epochs), self.train_global_sensitivity, label='Training Global Sensitivity', marker='o')
+            for i in range(self.config['Number of classes']):
+                plt.plot(range(self.epochs), self.train_per_class_sensitivity[i], label=f'Training Class {i} Sensitivity', linestyle='--')
+            if self.valid_loader is not None and self.valid_ground_truth:
+                plt.plot(range(self.epochs), self.val_global_sensitivity, label='Validation Global Sensitivity', marker='x')
+                for i in range(self.config['Number of classes']):
+                    plt.plot(range(self.epochs), self.val_per_class_sensitivity[i], label=f'Validation Class {i} Sensitivity', linestyle=':')
+            plt.title('Sensitivity Over Epochs')
+            plt.xlabel('Epochs')
+            plt.ylabel('Sensitivity')
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(f'{experiment_folder}/Sensitivity.png')
+            plt.close()
+
+            # Specificity plot
+            plt.figure(figsize=(10, 6))
+            plt.plot(range(self.epochs), self.train_global_specificity, label='Training Global Specificity', marker='o')
+            for i in range(self.config['Number of classes']):
+                plt.plot(range(self.epochs), self.train_per_class_specificity[i], label=f'Training Class {i} Specificity', linestyle='--')
+            if self.valid_loader is not None and self.valid_ground_truth:
+                plt.plot(range(self.epochs), self.val_global_specificity, label='Validation Global Specificity', marker='x')
+                for i in range(self.config['Number of classes']):
+                    plt.plot(range(self.epochs), self.val_per_class_specificity[i], label=f'Validation Class {i} Specificity', linestyle=':')
+            plt.title('Specificity Over Epochs')
+            plt.xlabel('Epochs')
+            plt.ylabel('Specificity')
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(f'{experiment_folder}/Specificity.png')
+            plt.close()
+
 
     def visualizations(
         self,
@@ -388,11 +437,12 @@ class AnnotHarmonyTrainer:
 
         # Convert tensors to numpy for visualization
         sample_np = sample.cpu().numpy().transpose(0, 2, 3, 1)
-        prediction_np = prediction.cpu().numpy()
+        prediction_masks_np = prediction[0].cpu().numpy()
+        prediction_rel_np = prediction[1].cpu().numpy()
         mask_sample_np = mask_sample.cpu().numpy()
 
         # Number of elements to display (maximum 9)
-        elements_display = min(prediction_np.shape[1], 9)
+        elements_display = min(max(prediction_masks_np.shape[1],prediction_rel_np.shape[1]), 9)
 
         # Create figure and axes
         fig, axs = plt.subplots(4, elements_display, figsize=(16, 5))
@@ -402,13 +452,13 @@ class AnnotHarmonyTrainer:
         axs[0, 0].set_title('Input image')
 
         # Display class predictions
-        axs[1, 0].imshow(np.argmax(prediction_np, axis=1)[0], vmin=0.0, vmax=self.config['Number of classes']-1)
+        axs[1, 0].imshow(np.argmax(prediction_masks_np, axis=1)[0], vmin=0.0, vmax=self.config['Number of classes']-1)
         axs[1, 0].set_title(f'Predictions class')
 
         # Display annotator reliability maps
         for idx, ann_rel in enumerate(random.sample(range(self.config['Num of annotators']), 
                                                    min(elements_display, self.config['Num of annotators']))):
-            axs[2, idx].imshow(prediction_np[0, ann_rel + self.config['Number of classes']], vmin=0.0, vmax=1.0)
+            axs[2, idx].imshow(prediction_rel_np[0, ann_rel], vmin=0.0, vmax=1.0)
             axs[2, idx].set_title(f"Ann {ann_rel + 1}'s rel map")
 
         for idx, anns in enumerate(random.sample(range(self.config['Num of annotators']), 
@@ -551,10 +601,10 @@ class AnnotHarmonyTrainer:
         # Calculate metrics if ground truth is available
         if self.train_ground_truth and orig_mask is not None:
             if isinstance(self.single_class_train, int):
-                selected_pred = y_pred[:, self.single_class_train:self.single_class_train + 1]
+                selected_pred = y_pred[0][:, self.single_class_train:self.single_class_train + 1]
                 metrics = self.calculate_metrics(selected_pred, orig_mask)
             else:
-                selected_pred = y_pred[:, :self.config['Number of classes']]
+                selected_pred = y_pred[0][:, :self.config['Number of classes']]
                 metrics = self.calculate_metrics(selected_pred, orig_mask)
             return (loss.item(), *metrics)
         else:
