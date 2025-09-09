@@ -1,1 +1,1 @@
-from .performance_annotharmony import performance_annotharmony
+from .performance_annotharmony import PerformanceAnnotHarmony
