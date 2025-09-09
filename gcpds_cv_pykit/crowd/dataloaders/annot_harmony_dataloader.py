@@ -221,7 +221,7 @@ class AnnotHarmonyDataset(Dataset):
             raise ValueError("At least one of annotators or ground_truth must be True")
 
 
-def get_annot_harmony_dataloader(
+def AnnotHarmonyDataloader(
     data_dir: Union[str, Path],
     batch_size: int,
     image_size: Tuple[int, int],
