@@ -135,7 +135,7 @@ class AnnotHarmonyTrainer:
         # from ..models import Annot_Harmony_Model
         
         self.model = AnnotHarmonyModel(
-            in_ch=self.config.get('Number of classes', 1),
+            in_ch=self.config.get("Input size", (3,))[0],
             out_ch=self.config.get('Number of classes', 1),
             n_annotators=self.config.get('Num of annotators', 1),
             activation_seg=self.config.get('Activation seg', 'sparse_softmax'),

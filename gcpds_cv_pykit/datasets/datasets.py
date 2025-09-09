@@ -7,15 +7,19 @@ def download_and_prepare_dataset(
     kaggle_dataset: str
 ) -> str:
     """
-    Download a Kaggle dataset using kagglehub and copy it to a local folder under 'datasets/{dataset_name}'.
-    If the dataset is already present, skip download and copy.
-    After copying, try to delete the original download folder.
+    Download a Kaggle dataset using kagglehub.
+    
+    - If the downloaded folder is read-only (e.g., mounted in Kaggle /input), 
+      use it directly without copying.
+    - If the folder is writable, copy it to 'datasets/{dataset_name}' 
+      and remove the original to free space.
 
     Args:
-        kaggle_dataset (str): KaggleHub dataset identifier (e.g., 'user/dataset/versions/x').
+        kaggle_dataset (str): KaggleHub dataset identifier 
+                              (e.g., 'user/dataset/versions/x').
 
     Returns:
-        str: Path to the prepared dataset folder.
+        str: Path to the usable dataset folder.
     """
     cwd = Path.cwd()
     datasets_dir = cwd / "datasets"
@@ -30,24 +34,33 @@ def download_and_prepare_dataset(
         return str(target_path)
 
     print("Downloading dataset from KaggleHub...")
-    kaggle_path = kagglehub.dataset_download(kaggle_dataset)
+    kaggle_path = Path(kagglehub.dataset_download(kaggle_dataset))
     print("Path to downloaded dataset files:", kaggle_path)
 
-    kaggle_path = Path(kaggle_path)
-    if not target_path.exists():
-        shutil.copytree(kaggle_path, target_path)
-        print(f"Dataset copied to: {target_path}")
+    # Check if the folder is writable
+    test_file = next(kaggle_path.rglob("*"), None)
+    is_writable = test_file is not None and os.access(test_file, os.W_OK)
+
+    if is_writable:
+        # Copy to working datasets folder
+        if not target_path.exists():
+            shutil.copytree(kaggle_path, target_path)
+            print(f"Dataset copied to: {target_path}")
+        else:
+            print(f"Target folder '{target_path}' already exists, skipping copy.")
+
+        # Remove original folder
+        try:
+            shutil.rmtree(kaggle_path)
+            print(f"Original folder '{kaggle_path}' deleted.")
+        except Exception as e:
+            print(f"Could not delete '{kaggle_path}': {e}")
+
+        return str(target_path)
     else:
-        print(f"Target folder '{target_path}' already exists, skipping copy.")
-
-    # Try to delete the original download folder
-    try:
-        shutil.rmtree(kaggle_path)
-        print(f"Original download folder '{kaggle_path}' deleted.")
-    except Exception as e:
-        print(f"Could not delete original download folder '{kaggle_path}': {e}")
-
-    return str(target_path)
+        # Just use original read-only folder
+        print(f"Original dataset folder '{kaggle_path}' is read-only. Using it directly.")
+        return str(kaggle_path)
 
 def OxfordIITPet(
     kaggle_dataset: str = "lucasiturriago/oxfordiiitpet/versions/3"
