@@ -10,7 +10,7 @@ from torch.amp import autocast
 from ..losses import TGCE_SS
 
 
-def performance_annotharmony(
+def PerformanceAnnotHarmony(
     model: torch.nn.Module,
     test_dataset: torch.utils.data.DataLoader,
     config: Dict[str, Any],
