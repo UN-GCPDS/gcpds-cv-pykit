@@ -104,3 +104,31 @@ def FeetMamitas(
         str: Path to the prepared dataset folder.
     """
     return download_and_prepare_dataset(kaggle_dataset)
+
+def OxfordIITPet_Crowd(
+    kaggle_dataset: str = "lucasiturriago/oxfordiiitpet-multi-annotators/versions/2"
+) -> str:
+    """
+    Download and prepare the OxfordIITPet Multiples Annotators dataset from KaggleHub.
+
+    Args:
+        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/oxfordiiitpet-multi-annotators/versions/2').
+
+    Returns:
+        str: Path to the prepared dataset folder.
+    """
+    return download_and_prepare_dataset(kaggle_dataset)
+
+def BreastCancer_Crowd(
+    kaggle_dataset: str = "lucasiturriago/breast-cancer-multi-annotators/versions/6"
+) -> str:
+    """
+    Download and prepare the Breast Cancer Multiples Annotators dataset from KaggleHub.
+
+    Args:
+        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/breast-cancer-multi-annotators/versions/6').
+
+    Returns:
+        str: Path to the prepared dataset folder.
+    """
+    return download_and_prepare_dataset(kaggle_dataset)
