@@ -158,7 +158,8 @@ class Segmentation_Dataset(Dataset):
         if img.float().max() > 1.0:
             img = img.float() / 255.0
         else:
-            return img
+            img = img.float()
+        return img
 
     def process_mask(self, mask_paths: Sequence[Union[str, Path]]) -> torch.Tensor:
         """

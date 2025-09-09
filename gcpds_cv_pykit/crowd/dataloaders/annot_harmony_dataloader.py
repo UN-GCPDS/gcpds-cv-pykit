@@ -149,8 +149,7 @@ class AnnotHarmonyDataset(Dataset):
 
         if ground_truth.max() > 1.0:
             ground_truth = ground_truth / 255.0
-        else:
-            return ground_truth
+        return ground_truth
 
     def _apply_augmentation(
         self,
