@@ -70,7 +70,7 @@ def random_sample_visualization(
         axes[0].set_title("Image", loc="center")
         img = images[sample_idx]
         if img.shape[0] == 1:  # grayscale
-            axes[0].imshow(img.squeeze(0).cpu().numpy(), cmap="gray")
+            axes[0].imshow(img.squeeze(0).cpu().numpy(), cmap="viridis")
         else:  # rgb
             display_img = img[:3] if img.shape[0] >= 3 else img
             axes[0].imshow(display_img.permute(1, 2, 0).cpu().numpy())
@@ -79,7 +79,7 @@ def random_sample_visualization(
         for i, class_idx in enumerate(classes_list):
             ax = axes[i + 1]
             ax.set_title(f"Class {class_idx}", loc="center")
-            ax.imshow(masks[sample_idx, class_idx].cpu().numpy(), cmap="gray", vmin=0, vmax=1)
+            ax.imshow(masks[sample_idx, class_idx].cpu().numpy(), cmap="viridis", vmin=0, vmax=1)
             ax.axis("off")
 
         fig.suptitle(
@@ -157,7 +157,7 @@ def random_sample_visualization(
 
             for i, ann_idx in enumerate(chosen_ann):
                 mask_index = ann_idx + chosen_classes[i] * num_annotators
-                axes[row_annot][i].imshow(anns_masks[sample_idx, mask_index], cmap="gray", vmin=0, vmax=1)
+                axes[row_annot][i].imshow(anns_masks[sample_idx, mask_index], cmap="viridis", vmin=0, vmax=1)
                 axes[row_annot][i].axis("off")
 
         # Ground truth masks
@@ -172,7 +172,7 @@ def random_sample_visualization(
                 axes[row_gt][0].set_title(f"GT Class {single_class}", loc="center")
 
             for i, class_idx in enumerate(chosen_classes):
-                axes[row_gt][i].imshow(gt_masks[sample_idx, class_idx], cmap="gray", vmin=0, vmax=1)
+                axes[row_gt][i].imshow(gt_masks[sample_idx, class_idx], cmap="viridis", vmin=0, vmax=1)
                 axes[row_gt][i].axis("off")
 
         fig.tight_layout()
