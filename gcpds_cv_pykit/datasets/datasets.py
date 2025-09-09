@@ -119,13 +119,13 @@ def FeetMamitas(
     return download_and_prepare_dataset(kaggle_dataset)
 
 def OxfordIITPet_Crowd(
-    kaggle_dataset: str = "lucasiturriago/oxfordiiitpet-multi-annotators/versions/3"
+    kaggle_dataset: str = "lucasiturriago/oxfordiiitpet-multi-annotators/versions/4"
 ) -> str:
     """
     Download and prepare the OxfordIITPet Multiples Annotators dataset from KaggleHub.
 
     Args:
-        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/oxfordiiitpet-multi-annotators/versions/3').
+        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/oxfordiiitpet-multi-annotators/versions/4').
 
     Returns:
         str: Path to the prepared dataset folder.
