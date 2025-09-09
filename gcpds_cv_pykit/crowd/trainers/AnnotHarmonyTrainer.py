@@ -135,7 +135,8 @@ class AnnotHarmonyTrainer:
         # from ..models import Annot_Harmony_Model
         
         self.model = AnnotHarmonyModel(
-            out_channels=self.config.get('Number of classes', 1),
+            in_ch=self.config.get('Number of classes', 1),
+            out_ch=self.config.get('Number of classes', 1),
             n_annotators=self.config.get('Num of annotators', 1),
             activation_seg=self.config.get('Activation seg', 'sparse_softmax'),
             activation_rel=self.config.get('Activation rel', 'softmax')
@@ -401,10 +402,8 @@ class AnnotHarmonyTrainer:
         axs[0, 0].set_title('Input image')
 
         # Display class predictions
-        for idx, class_pred in enumerate(random.sample(range(self.config['Number of classes']), 
-                                                      min(elements_display, self.config['Number of classes']))):
-            axs[1, idx].imshow(prediction_np[0, class_pred], vmin=0.0, vmax=1.0)
-            axs[1, idx].set_title(f'Pred class {class_pred}')
+        axs[1, 0].imshow(np.argmax(prediction_np, axis=1)[0], vmin=0.0, vmax=self.config['Number of classes']-1)
+        axs[1, 0].set_title(f'Predictions class')
 
         # Display annotator reliability maps
         for idx, ann_rel in enumerate(random.sample(range(self.config['Num of annotators']), 
@@ -414,8 +413,13 @@ class AnnotHarmonyTrainer:
 
         for idx, anns in enumerate(random.sample(range(self.config['Num of annotators']), 
                                                 min(elements_display, self.config['Num of annotators']))):
-            axs[0, idx + 1].imshow(mask_sample_np[0, anns], vmin=0.0, vmax=1.0)
-            axs[0, idx + 1].set_title(f"Ann {anns + 1}'s mask")
+            annotatios_ann = [anns + self.config['Num of annotators'] * class_ for class_ in range(self.config['Number of classes'])]
+            if np.all(mask_sample_np[:, annotatios_ann, :, :] == self.config.get('Ignore value', 0.6)):
+                mask_show = np.full(mask_sample_np.shape[2:], -1.0)  # Initialize with ignore value
+            else:
+                mask_show = np.argmax(mask_sample_np[:, annotatios_ann, :, :], axis=1)[0]
+            axs[3, idx].imshow(mask_show, vmin=-1.0, vmax=self.config['Number of classes']-1)
+            axs[3, idx].set_title(f"Ann {anns + 1}'s masks")
 
         [ax.axis('off') for row in axs for ax in row]
         plt.tight_layout()
