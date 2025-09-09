@@ -155,8 +155,10 @@ class Segmentation_Dataset(Dataset):
         """
         img = torchvision.io.read_image(str(file_path), mode=ImageReadMode.RGB)
         img = TF.resize(img, list(self.image_size))
-        img = img.float() / 255.0
-        return img
+        if img.float().max() > 1.0:
+            img = img.float() / 255.0
+        else:
+            return img
 
     def process_mask(self, mask_paths: Sequence[Union[str, Path]]) -> torch.Tensor:
         """

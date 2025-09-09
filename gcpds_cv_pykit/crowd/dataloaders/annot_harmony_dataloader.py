@@ -108,7 +108,10 @@ class AnnotHarmonyDataset(Dataset):
         """Load and normalize RGB image."""
         img = torchvision.io.decode_image(file_path, mode=ImageReadMode.RGB)
         img = TF.resize(img, list(self.image_size))
-        return img.float() / 255.0
+        if img.float().max() > 1.0:
+            return img.float() / 255.0
+        else:
+            return img.float()
 
     def _process_masks(self, mask_paths: List[str]) -> Tuple[torch.Tensor, torch.Tensor]:
         """Load annotator masks into tensor."""
@@ -122,6 +125,8 @@ class AnnotHarmonyDataset(Dataset):
         for i, file_path in enumerate(mask_paths):
             if os.path.exists(file_path):
                 mask = torchvision.io.decode_image(file_path, mode=ImageReadMode.GRAY)
+                if mask.float().max() > 1.0:
+                    mask = mask.float() / 255.0
             else:
                 mask = torch.full(self.image_size, self.ignored_value, dtype=torch.float32)
 
@@ -142,7 +147,10 @@ class AnnotHarmonyDataset(Dataset):
             mask = torchvision.io.decode_image(file_path, mode=ImageReadMode.GRAY)
             ground_truth[i, ...] = TF.resize(mask, list(self.image_size)).float()
 
-        return ground_truth
+        if ground_truth.max() > 1.0:
+            ground_truth = ground_truth / 255.0
+        else:
+            return ground_truth
 
     def _apply_augmentation(
         self,
