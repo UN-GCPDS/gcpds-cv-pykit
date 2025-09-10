@@ -177,7 +177,7 @@ def random_sample_visualization(
         for r in range(rows):
             for c in range(cols):
                 axes[r][c].axis("off")
-        fig.tight_layout()
+        #fig.tight_layout()
         plt.show()
 
         # Cleanup
