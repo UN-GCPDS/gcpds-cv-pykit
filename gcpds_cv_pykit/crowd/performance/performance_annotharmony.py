@@ -79,9 +79,9 @@ def PerformanceAnnotHarmony(
             # Class selection
             if is_single_class:
                 class_idx = config["Single class test"]
-                y_pred = y_pred[:, class_idx:class_idx+1]
+                y_pred = y_pred[0][:, class_idx:class_idx+1]
             else:
-                y_pred = y_pred[:, :config["Number of classes"]]
+                y_pred = y_pred[0][:, :config["Number of classes"]]
 
             y_true = gt_masks.float()
             y_pred = y_pred.float()
