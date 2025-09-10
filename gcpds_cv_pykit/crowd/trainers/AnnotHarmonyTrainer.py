@@ -415,7 +415,8 @@ class AnnotHarmonyTrainer:
         images: torch.Tensor,
         masks: torch.Tensor,
         anns_onehot: torch.Tensor,
-        epoch: int
+        epoch: int,
+        orig_mask: Optional[torch.Tensor] = None
     ) -> None:
         """Generate and display training visualizations."""
 
@@ -427,6 +428,8 @@ class AnnotHarmonyTrainer:
         sample = images[sample_n:sample_n + 1].to(self.device)
         anns_onehot_sample = anns_onehot[sample_n:sample_n + 1].to(self.device)
         mask_sample = masks[sample_n:sample_n + 1]
+        if orig_mask is not None:
+            orig_mask_sample = orig_mask[sample_n:sample_n + 1]
 
         with torch.no_grad():
             if self.amp_:
@@ -440,6 +443,8 @@ class AnnotHarmonyTrainer:
         prediction_masks_np = prediction[0].cpu().numpy()
         prediction_rel_np = prediction[1].cpu().numpy()
         mask_sample_np = mask_sample.cpu().numpy()
+        if orig_mask is not None:
+            orig_mask_sample_np = orig_mask_sample.cpu().numpy()
 
         # Number of elements to display (maximum 9)
         elements_display = min(max(prediction_masks_np.shape[1],prediction_rel_np.shape[1]), 9)
@@ -450,6 +455,11 @@ class AnnotHarmonyTrainer:
         # Display input image
         axs[0, 0].imshow(sample_np[0])
         axs[0, 0].set_title('Input image')
+
+        if orig_mask is not None:
+            # Display ground truth mask if available
+            axs[1, 1].imshow(np.argmax(orig_mask_sample_np, axis=1)[0], vmin=0.0, vmax=self.config['Number of classes']-1)
+            axs[1, 1].set_title('Ground truth mask')
 
         # Display class predictions
         axs[1, 0].imshow(np.argmax(prediction_masks_np, axis=1)[0], vmin=0.0, vmax=self.config['Number of classes']-1)
@@ -891,7 +901,10 @@ class AnnotHarmonyTrainer:
                     images, masks, anns_onehot, _ = data_batch
                 else:
                     images, masks, anns_onehot = data_batch
-                self.visualizations(images, masks, anns_onehot, epoch)
+                if orig_mask is None:
+                    self.visualizations(images, masks, anns_onehot, epoch, None)
+                else:
+                    self.visualizations(images, masks, anns_onehot, epoch, orig_mask)
 
             # Save best model
             if self.valid_ground_truth and avg_val_dice > self.best_val_dice:
