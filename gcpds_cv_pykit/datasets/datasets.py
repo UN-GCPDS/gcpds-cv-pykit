@@ -133,13 +133,13 @@ def OxfordIITPet_Crowd(
     return download_and_prepare_dataset(kaggle_dataset)
 
 def BreastCancer_Crowd(
-    kaggle_dataset: str = "lucasiturriago/breast-cancer-multi-annotators/versions/6"
+    kaggle_dataset: str = "lucasiturriago/breast-cancer-multi-annotators/versions/4"
 ) -> str:
     """
     Download and prepare the Breast Cancer Multiples Annotators dataset from KaggleHub.
 
     Args:
-        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/breast-cancer-multi-annotators/versions/6').
+        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/breast-cancer-multi-annotators/versions/4').
 
     Returns:
         str: Path to the prepared dataset folder.
