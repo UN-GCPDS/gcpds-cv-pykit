@@ -658,10 +658,10 @@ class AnnotHarmonyTrainer:
             # Calculate metrics if ground truth is available
             if self.valid_ground_truth and orig_mask is not None:
                 if isinstance(self.single_class_valid, int):
-                    selected_pred = y_pred[:, self.single_class_valid:self.single_class_valid + 1]
+                    selected_pred = y_pred[0][:, self.single_class_valid:self.single_class_valid + 1]
                     metrics = self.calculate_metrics(selected_pred, orig_mask)
                 else:
-                    selected_pred = y_pred[:, :self.config['Number of classes']]
+                    selected_pred = y_pred[0][:, :self.config['Number of classes']]
                     metrics = self.calculate_metrics(selected_pred, orig_mask)
 
             # Return appropriate values based on configuration
