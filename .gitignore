@@ -130,9 +130,9 @@ dmypy.json
 
 # Computer Vision / Machine Learning specific
 # Dataset directories
-data/
-datasets/
-dataset/
+#data/
+#datasets/
+#dataset/
 raw_data/
 processed_data/
 
