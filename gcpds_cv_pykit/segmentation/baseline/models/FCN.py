@@ -1,16 +1,17 @@
 """
-FCN (Fully Convolutional Network) implementation with ResNet34 backbone for image segmentation.
+FCN (Fully Convolutional Network) implementation with configurable backbone for image segmentation.
 
 This module provides a PyTorch implementation of the FCN architecture with
-ResNet34 pre-trained backbone following segmentation-models-pytorch design patterns.
+support for multiple backbones (ResNet34, MobileNetV3, etc.) following 
+segmentation-models-pytorch design patterns.
 Features skip connections for multi-scale feature fusion.
 """
 
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import resnet34
+from torchvision.models import resnet34, mobilenet_v3_large
 
 
 class ConvBlock(nn.Module):
@@ -94,6 +95,9 @@ class ResNet34Encoder(nn.Module):
         self.layer2 = resnet.layer2  # 128 channels, stride 2
         self.layer3 = resnet.layer3  # 256 channels, stride 2
         self.layer4 = resnet.layer4  # 512 channels, stride 2
+        
+        # Store output channels for each layer
+        self.feature_channels = [64, 128, 256, 512]
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Forward pass through the ResNet34 encoder.
@@ -103,10 +107,10 @@ class ResNet34Encoder(nn.Module):
             
         Returns:
             Tuple containing features from different layers for skip connections:
-                - layer1 features (64 channels)
-                - layer2 features (128 channels)
-                - layer3 features (256 channels)
-                - layer4 features (512 channels)
+                - layer1 features (64 channels, H/4, W/4)
+                - layer2 features (128 channels, H/8, W/8)
+                - layer3 features (256 channels, H/16, W/16)
+                - layer4 features (512 channels, H/32, W/32)
         """
         # Layer 0: Initial conv + bn + relu (stride=2, H/2, W/2)
         x = self.layer0(x)  # 64 channels, H/2, W/2
@@ -122,7 +126,76 @@ class ResNet34Encoder(nn.Module):
         return x1, x2, x3, x4
 
 
-class FCNDecoder(nn.Module):
+class MobileNetV3Encoder(nn.Module):
+    """MobileNetV3-based encoder for FCN.
+    
+    Extracts multi-scale features for skip connections.
+    
+    Args:
+        pretrained: Whether to use pretrained weights.
+        in_channels: Number of input channels.
+    """
+    
+    def __init__(
+        self, 
+        pretrained: bool = True, 
+        in_channels: int = 3
+    ) -> None:
+        super().__init__()
+        
+        if pretrained:
+            mobilenet = mobilenet_v3_large(weights='IMAGENET1K_V1')
+        else:
+            mobilenet = mobilenet_v3_large(weights=None)
+        
+        features = mobilenet.features
+        
+        # Handle different input channels
+        if in_channels != 3:
+            features[0][0] = nn.Conv2d(
+                in_channels, 16, kernel_size=3, stride=2, padding=1, bias=False
+            )
+        
+        # Layer grouping based on stride changes and feature extraction points
+        # MobileNetV3 structure:
+        # features[0:2]   -> 16 channels, H/2
+        # features[2:4]   -> 24 channels, H/4
+        # features[4:7]   -> 40 channels, H/8
+        # features[7:13]  -> 112 channels, H/16
+        # features[13:17] -> 960 channels, H/32
+        
+        self.layer0 = nn.Sequential(features[0], features[1])  # 16 channels, H/2
+        self.layer1 = nn.Sequential(features[2], features[3])  # 24 channels, H/4
+        self.layer2 = nn.Sequential(features[4], features[5], features[6])  # 40 channels, H/8
+        self.layer3 = nn.Sequential(*features[7:13])  # 112 channels, H/16
+        self.layer4 = nn.Sequential(*features[13:17])  # 960 channels, H/32
+        
+        # Store output channels for each layer
+        self.feature_channels = [24, 40, 112, 960]
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Forward pass through the MobileNetV3 encoder.
+        
+        Args:
+            x: Input tensor.
+            
+        Returns:
+            Tuple containing features from different layers for skip connections:
+                - layer1 features (24 channels, H/4, W/4)
+                - layer2 features (40 channels, H/8, W/8)
+                - layer3 features (112 channels, H/16, W/16)
+                - layer4 features (960 channels, H/32, W/32)
+        """
+        x = self.layer0(x)  # 16 channels, H/2, W/2
+        x1 = self.layer1(x)  # 24 channels, H/4, W/4
+        x2 = self.layer2(x1)  # 40 channels, H/8, W/8
+        x3 = self.layer3(x2)  # 112 channels, H/16, W/16
+        x4 = self.layer4(x3)  # 960 channels, H/32, W/32
+        
+        return x1, x2, x3, x4
+
+
+class Decoder(nn.Module):
     """FCN decoder with skip connections for multi-scale feature fusion.
     
     Args:
@@ -133,7 +206,7 @@ class FCNDecoder(nn.Module):
     
     def __init__(
         self, 
-        feature_channels: List[int] = [64, 128, 256, 512],
+        feature_channels: List[int],
         decoder_channels: int = 256,
         out_channels: int = 1
     ) -> None:
@@ -179,10 +252,10 @@ class FCNDecoder(nn.Module):
         """Forward pass through the FCN decoder with skip connections.
         
         Args:
-            x1: Features from layer1 (64 channels, H/4, W/4).
-            x2: Features from layer2 (128 channels, H/8, W/8).
-            x3: Features from layer3 (256 channels, H/16, W/16).
-            x4: Features from layer4 (512 channels, H/32, W/32).
+            x1: Features from layer1 (H/4, W/4).
+            x2: Features from layer2 (H/8, W/8).
+            x3: Features from layer3 (H/16, W/16).
+            x4: Features from layer4 (H/32, W/32).
             
         Returns:
             Decoded features with skip connections.
@@ -278,23 +351,53 @@ def get_activation(activation: Optional[Union[str, nn.Module]]) -> Optional[nn.M
         raise ValueError("activation must be None, a string, or a nn.Module instance.")
 
 
+# Backbone registry
+BACKBONE_REGISTRY: Dict[str, type] = {
+    'resnet34': ResNet34Encoder,
+    'mobilenetv3': MobileNetV3Encoder,
+}
+
+
 class FCN(nn.Module):
-    """FCN (Fully Convolutional Network) architecture with ResNet34 backbone for image segmentation.
+    """FCN (Fully Convolutional Network) architecture with configurable backbone for image segmentation.
     
     Clean pipeline: x → encoder → decoder (with skip connections) → segmentation_head → final_activation
+    
+    Supports multiple backbones:
+    - 'resnet34': ResNet34 backbone (default)
+    - 'mobilenetv3': MobileNetV3-Large backbone
     
     Features multi-scale skip connections for better boundary preservation and detail recovery.
     
     Args:
+        backbone: Backbone architecture name ('resnet34' or 'mobilenetv3').
         in_channels: Number of input channels.
         out_channels: Number of output channels (classes).
-        pretrained: Whether to use pretrained ResNet34 weights.
+        pretrained: Whether to use pretrained backbone weights.
         decoder_channels: Number of decoder channels.
         final_activation: Optional activation function after segmentation head.
+        
+    Raises:
+        ValueError: If backbone is not supported.
+        
+    Example:
+        >>> # ResNet34 backbone
+        >>> model = FCN(backbone='resnet34', in_channels=3, out_channels=1)
+        >>> 
+        >>> # MobileNetV3 backbone
+        >>> model = FCN(backbone='mobilenetv3', in_channels=3, out_channels=1)
+        >>> 
+        >>> # Custom configuration
+        >>> model = FCN(
+        ...     backbone='resnet34',
+        ...     decoder_channels=512,
+        ...     final_activation='sigmoid'
+        ... )
     """
     
     def __init__(
         self,
+        backbone: str = 'resnet34',
         in_channels: int = 3,
         out_channels: int = 1,
         pretrained: bool = True,
@@ -303,15 +406,26 @@ class FCN(nn.Module):
     ) -> None:
         super().__init__()
         
-        # Encoder
-        self.encoder = ResNet34Encoder(
+        # Validate backbone
+        if backbone not in BACKBONE_REGISTRY:
+            raise ValueError(
+                f"Unsupported backbone: {backbone}. "
+                f"Available backbones: {list(BACKBONE_REGISTRY.keys())}"
+            )
+        
+        # Create encoder based on backbone
+        encoder_class = BACKBONE_REGISTRY[backbone]
+        self.encoder = encoder_class(
             pretrained=pretrained, 
             in_channels=in_channels
         )
         
+        # Get encoder output channels
+        feature_channels = self.encoder.feature_channels
+        
         # Decoder with skip connections
-        self.decoder = FCNDecoder(
-            feature_channels=[64, 128, 256, 512],  # ResNet34 layer channels
+        self.decoder = Decoder(
+            feature_channels=feature_channels,
             decoder_channels=decoder_channels,
             out_channels=out_channels
         )

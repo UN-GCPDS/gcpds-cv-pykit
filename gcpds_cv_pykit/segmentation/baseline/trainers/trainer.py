@@ -130,6 +130,7 @@ class SegmentationModel_Trainer:
             case 'UNet':
                 
                 self.model = UNet(
+                    backbone=self.config.get('Backbone', 'resnet34'),
                     in_channels=self.config.get('Input size', [3])[0],
                     out_channels=self.config.get('Number of classes', 1),
                     pretrained=self.config.get('Pretrained', True),
@@ -140,6 +141,7 @@ class SegmentationModel_Trainer:
             case 'ResUNet':
 
                 self.model = ResUNet(
+                    backbone=self.config.get('Backbone', 'resnet34'),
                     in_channels=self.config.get('Input size', [3])[0],
                     out_channels=self.config.get('Number of classes', 1),
                     pretrained=self.config.get('Pretrained', True),
@@ -151,6 +153,7 @@ class SegmentationModel_Trainer:
             case 'DeepLabV3+':
 
                 self.model = DeepLabV3Plus(
+                    backbone=self.config.get('Backbone', 'resnet34'),
                     in_channels=self.config.get('Input size', [3])[0],
                     out_channels=self.config.get('Number of classes', 1),
                     pretrained=self.config.get('Pretrained', True),
@@ -162,6 +165,7 @@ class SegmentationModel_Trainer:
             case 'FCN':
 
                 self.model = FCN(
+                    backbone=self.config.get('Backbone', 'resnet34'),
                     in_channels=self.config.get('Input size', [3])[0],
                     out_channels=self.config.get('Number of classes', 1),
                     pretrained=self.config.get('Pretrained', True),

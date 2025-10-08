@@ -1,15 +1,16 @@
 """
-U-Net implementation with ResNet34 backbone for image segmentation.
+U-Net implementation with configurable backbone for image segmentation.
 
 This module provides a PyTorch implementation of the U-Net architecture with
-ResNet34 pre-trained backbone following segmentation-models-pytorch design patterns.
+support for multiple backbones (ResNet34, MobileNetV3, etc.) following 
+segmentation-models-pytorch design patterns.
 """
 
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import resnet34
+from torchvision.models import resnet34, mobilenet_v3_large
 
 
 class DoubleConv(nn.Module):
@@ -76,6 +77,9 @@ class ResNet34Encoder(nn.Module):
         self.layer2 = resnet.layer2  # 128 channels
         self.layer3 = resnet.layer3  # 256 channels
         self.layer4 = resnet.layer4  # 512 channels
+        
+        # Store output channels for each layer
+        self.out_channels = [64, 64, 128, 256, 512]
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         """Forward pass through the ResNet34 encoder.
@@ -107,6 +111,77 @@ class ResNet34Encoder(nn.Module):
         skips.append(x)
         
         x = self.layer4(x)  # 512 channels, H/32, W/32 (bottleneck)
+        
+        return x, skips
+
+
+class MobileNetV3Encoder(nn.Module):
+    """MobileNetV3-based encoder for U-Net.
+    
+    Extracts features at 5 different scales:
+    - layer0: stride=2, channels=16, size=H/2
+    - layer1: stride=1, channels=24, size=H/2
+    - layer2: stride=2, channels=40, size=H/4
+    - layer3: stride=2, channels=112, size=H/8
+    - layer4: stride=2, channels=960, size=H/16
+    
+    Args:
+        pretrained: Whether to use pretrained weights.
+        in_channels: Number of input channels.
+    """
+
+    def __init__(self, pretrained: bool = True, in_channels: int = 3) -> None:
+        super().__init__()
+        
+        if pretrained:
+            mobilenet = mobilenet_v3_large(weights='IMAGENET1K_V1')
+        else:
+            mobilenet = mobilenet_v3_large(weights=None)
+        
+        features = mobilenet.features
+        
+        # Handle different input channels
+        if in_channels != 3:
+            features[0][0] = nn.Conv2d(
+                in_channels, 16, kernel_size=3, stride=2, padding=1, bias=False
+            )
+        
+        # Layer grouping based on stride changes
+        self.layer0 = nn.Sequential(features[0], features[1])  # 16 channels, H/2
+        self.layer1 = nn.Sequential(features[2], features[3])  # 24 channels, H/2
+        self.layer2 = nn.Sequential(features[4], features[5], features[6])  # 40 channels, H/4
+        self.layer3 = nn.Sequential(*features[7:13])  # 112 channels, H/8
+        self.layer4 = nn.Sequential(*features[13:17])  # 960 channels, H/16
+        
+        # Store output channels for each layer
+        self.out_channels = [16, 24, 40, 112, 960]
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+        """Forward pass through the MobileNetV3 encoder.
+
+        Args:
+            x: Input tensor.
+
+        Returns:
+            Tuple containing:
+                - Output tensor after encoding (bottleneck)
+                - List of skip connection tensors [skip0, skip1, skip2, skip3]
+        """
+        skips = []
+        
+        x = self.layer0(x)  # 16 channels, H/2, W/2
+        skips.append(x)
+        
+        x = self.layer1(x)  # 24 channels, H/2, W/2
+        skips.append(x)
+        
+        x = self.layer2(x)  # 40 channels, H/4, W/4
+        skips.append(x)
+        
+        x = self.layer3(x)  # 112 channels, H/8, W/8
+        skips.append(x)
+        
+        x = self.layer4(x)  # 960 channels, H/16, W/16 (bottleneck)
         
         return x, skips
 
@@ -161,38 +236,34 @@ class Decoder(nn.Module):
 
     def __init__(
         self, 
-        encoder_channels: List[int] = [64, 64, 128, 256, 512],
+        encoder_channels: List[int],
         decoder_channels: List[int] = [256, 128, 64, 64]
     ) -> None:
         super().__init__()
         
-        # encoder_channels = [64, 64, 128, 256, 512] (layer0, layer1, layer2, layer3, layer4)
+        # encoder_channels = [ch0, ch1, ch2, ch3, ch4] (layer0, layer1, layer2, layer3, layer4)
         # decoder_channels = [256, 128, 64, 64] (decoder outputs)
         
-        self.layer4 = DecoderBlock(encoder_channels[4], encoder_channels[3], decoder_channels[0])  # 512 -> 256, skip: 256
-        self.layer3 = DecoderBlock(decoder_channels[0], encoder_channels[2], decoder_channels[1])  # 256 -> 128, skip: 128
-        self.layer2 = DecoderBlock(decoder_channels[1], encoder_channels[1], decoder_channels[2])  # 128 -> 64, skip: 64
-        self.layer1 = DecoderBlock(decoder_channels[2], encoder_channels[0], decoder_channels[3])  # 64 -> 64, skip: 64
+        self.layer4 = DecoderBlock(encoder_channels[4], encoder_channels[3], decoder_channels[0])
+        self.layer3 = DecoderBlock(decoder_channels[0], encoder_channels[2], decoder_channels[1])
+        self.layer2 = DecoderBlock(decoder_channels[1], encoder_channels[1], decoder_channels[2])
+        self.layer1 = DecoderBlock(decoder_channels[2], encoder_channels[0], decoder_channels[3])
 
     def forward(self, x: torch.Tensor, skips: List[torch.Tensor]) -> torch.Tensor:
         """Forward pass through the decoder.
 
         Args:
-            x: Input tensor from encoder bottleneck (H/32, W/32).
+            x: Input tensor from encoder bottleneck.
             skips: List of skip connection tensors from encoder [skip0, skip1, skip2, skip3].
-                  skip0: H/2, W/2 (64 channels)
-                  skip1: H/4, W/4 (64 channels)  
-                  skip2: H/8, W/8 (128 channels)
-                  skip3: H/16, W/16 (256 channels)
 
         Returns:
             Decoded tensor with size H/2, W/2 (matching skip0).
         """
         # Process from deepest to shallowest
-        x = self.layer4(x, skips[3])  # H/32 -> H/16 (match skip3)
-        x = self.layer3(x, skips[2])  # H/16 -> H/8 (match skip2)
-        x = self.layer2(x, skips[1])  # H/8 -> H/4 (match skip1)
-        x = self.layer1(x, skips[0])  # H/4 -> H/2 (match skip0)
+        x = self.layer4(x, skips[3])  # bottleneck -> match skip3
+        x = self.layer3(x, skips[2])  # -> match skip2
+        x = self.layer2(x, skips[1])  # -> match skip1
+        x = self.layer1(x, skips[0])  # -> match skip0
         
         return x  # Output: H/2, W/2
 
@@ -260,39 +331,84 @@ def get_activation(activation: Optional[Union[str, nn.Module]]) -> Optional[nn.M
         raise ValueError("activation must be None, a string, or a nn.Module instance.")
 
 
+# Backbone registry
+BACKBONE_REGISTRY: Dict[str, type] = {
+    'resnet34': ResNet34Encoder,
+    'mobilenetv3': MobileNetV3Encoder,
+}
+
+
 class UNet(nn.Module):
-    """U-Net architecture with ResNet34 backbone for image segmentation.
+    """U-Net architecture with configurable backbone for image segmentation.
     
     Following segmentation-models-pytorch design principles:
     - No interpolation in main forward pass
     - Precise size matching through decoder block design
     - Final upsampling in segmentation head
+    
+    Supports multiple backbones:
+    - 'resnet34': ResNet34 backbone (default)
+    - 'mobilenetv3': MobileNetV3-Large backbone
 
     Args:
+        backbone: Backbone architecture name ('resnet34' or 'mobilenetv3').
         in_channels: Number of input channels.
         out_channels: Number of output channels (classes).
-        pretrained: Whether to use pretrained ResNet34 weights.
-        encoder_channels: List of encoder output channels.
+        pretrained: Whether to use pretrained backbone weights.
         decoder_channels: List of decoder output channels.
         final_activation: Optional activation function after segmentation head.
+        
+    Raises:
+        ValueError: If backbone is not supported.
+        
+    Example:
+        >>> # ResNet34 backbone
+        >>> model = UNet(backbone='resnet34', in_channels=3, out_channels=1)
+        >>> 
+        >>> # MobileNetV3 backbone
+        >>> model = UNet(backbone='mobilenetv3', in_channels=3, out_channels=1)
+        >>> 
+        >>> # Custom decoder channels
+        >>> model = UNet(
+        ...     backbone='resnet34',
+        ...     decoder_channels=[512, 256, 128, 64],
+        ...     final_activation='sigmoid'
+        ... )
     """
 
     def __init__(
         self,
+        backbone: str = 'resnet34',
         in_channels: int = 3,
         out_channels: int = 1,
         pretrained: bool = True,
-        encoder_channels: List[int] = [64, 64, 128, 256, 512],
         decoder_channels: List[int] = [256, 128, 64, 64],
         final_activation: Optional[Union[str, nn.Module]] = None
     ) -> None:
         super().__init__()
         
-        # Encoder
-        self.encoder = ResNet34Encoder(pretrained=pretrained, in_channels=in_channels)
+        # Validate backbone
+        if backbone not in BACKBONE_REGISTRY:
+            raise ValueError(
+                f"Unsupported backbone: {backbone}. "
+                f"Available backbones: {list(BACKBONE_REGISTRY.keys())}"
+            )
+        
+        # Create encoder based on backbone
+        encoder_class = BACKBONE_REGISTRY[backbone]
+        self.encoder = encoder_class(
+            pretrained=pretrained, 
+            in_channels=in_channels
+        )
+        
+        # Get encoder output channels
+        encoder_channels = self.encoder.out_channels
         
         # Decoder
-        self.decoder = Decoder(encoder_channels=encoder_channels, decoder_channels=decoder_channels)
+        self.decoder = Decoder(
+            encoder_channels=encoder_channels, 
+            decoder_channels=decoder_channels
+        )
         
         # Segmentation head
         self.segmentation_head = SegmentationHead(decoder_channels[-1], out_channels)
@@ -311,10 +427,10 @@ class UNet(nn.Module):
         """
         input_size = x.shape[2:]  # Store original input size (H, W)
         
-        # Encoder: H,W -> H/32,W/32
+        # Encoder: H,W -> bottleneck
         encoded, skips = self.encoder(x)
         
-        # Decoder: H/32,W/32 -> H/2,W/2 (using skip connections)
+        # Decoder: bottleneck -> H/2,W/2 (using skip connections)
         decoded = self.decoder(encoded, skips)
         
         # Segmentation head: H/2,W/2 -> H,W
@@ -324,4 +440,4 @@ class UNet(nn.Module):
         if self.final_activation is not None:
             output = self.final_activation(output)
         
-        return output
+        return output 
