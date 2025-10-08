@@ -90,7 +90,7 @@ class Segmentation_Dataset(Dataset):
         self.partition = partition
         self.single_class = single_class
         self.augment = augment and (partition.lower() == 'train')
-        self.images_folder = images_folder if (isinstance(images_folder,str)) else 'patches'
+        self.images_folder = images_folder if (isinstance(images_folder,str)) else 'images'
 
         # Find all patch image files - support multiple image formats
         supported_formats = ['*.png', '*.jpg', '*.jpeg']
@@ -285,7 +285,7 @@ def Segmentation_DataLoader(
     return DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=(partition.lower() == 'Train'),
+        shuffle=(partition.lower() == 'train'),
         num_workers=num_workers,
         pin_memory=pin_memory,
         prefetch_factor=prefetch_factor if num_workers > 0 else None,
