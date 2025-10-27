@@ -1,1 +1,1 @@
-from .datasets import OxfordIITPet, SeedGermination, BreastCancer, FeetMamitas, OxfordIITPet_Crowd, BreastCancer_Crowd
+from .datasets import OxfordIITPet, SeedGermination, BreastCancer, FeetMamitas, OxfordIITPet_Crowd, BreastCancer_Crowd, RIGA

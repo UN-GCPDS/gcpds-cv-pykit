@@ -1014,31 +1014,28 @@ config['WandB monitoring'] = [
 
 ## 📈 Performance Evaluation
 
-### Available Metrics
-
-The `PerformanceModels` class calculates:
-
-- **DICE Coefficient**: Overlap between prediction and ground truth
-- **Jaccard Index (IoU)**: Intersection over Union
-- **Sensitivity (Recall)**: True positive rate
-- **Specificity**: True negative rate
-
-### Metrics Calculation
+Quick evaluation for models trained with *TGCE-SS* loss:
 
 ```python
-evaluator = PerformanceModels(model, test_loader, config)
+from utils.performance import PerformanceAnnotHarmony
 
-# Global metrics (averaged across all classes)
-print(f"Global DICE: {evaluator.global_dice:.4f}")
-print(f"Global IoU: {evaluator.global_iou:.4f}")
-
-# Per-class metrics
-for i, (dice, iou) in enumerate(zip(evaluator.per_class_dice, evaluator.per_class_iou)):
-    print(f"Class {i} - DICE: {dice:.4f}, IoU: {iou:.4f}")
-
-# Confusion matrix
-print(evaluator.confusion_matrix)
+PerformanceAnnotHarmony(
+    model        = model,
+    test_dataset = test_loader,
+    config       = config,   # needs: Num of annotators, Number of classes, …
+    save_results = True,     # saves *.npy to config["drive_dir"]/results/
+    probabilistic= False     # True → no GT, average over 9 thresholds
+)
 ```
+
+Metrics reported (global + per-class):  
+**DICE** | **Jaccard (IoU)** | **Sensitivity** | **Specificity**
+
+Probabilistic mode averages each metric over thresholds `[0.1 … 0.9]`.
+
+Saved files:  
+`<model>_<dataset>_{probabilistic}_Dice_global.npy`, `_class0.npy`, …
+
 
 ---
 
