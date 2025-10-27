@@ -105,13 +105,13 @@ def BreastCancer(
     return download_and_prepare_dataset(kaggle_dataset)
 
 def FeetMamitas(
-    kaggle_dataset: str = "lucasiturriago/feet-mamitas/versions/4"
+    kaggle_dataset: str = "lucasiturriago/feet-mamitas/versions/5"
 ) -> str:
     """
     Download and prepare the Feet Mamitas dataset from KaggleHub.
 
     Args:
-        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/feet-mamitas/versions/4').
+        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/feet-mamitas/versions/5').
 
     Returns:
         str: Path to the prepared dataset folder.
@@ -140,6 +140,20 @@ def BreastCancer_Crowd(
 
     Args:
         kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/breast-cancer-multi-annotators/versions/4').
+
+    Returns:
+        str: Path to the prepared dataset folder.
+    """
+    return download_and_prepare_dataset(kaggle_dataset)
+
+def RIGA(
+    kaggle_dataset: str = "lucasiturriago/retinal-fundus-glaucoma-analysis/versions/1"
+) -> str:
+    """
+    Download and prepare the Retinal Fundus Glaucoma Analysis dataset from KaggleHub.
+
+    Args:
+        kaggle_dataset (str): KaggleHub dataset identifier (default: 'lucasiturriago/retinal-fundus-glaucoma-analysis/versions/1').
 
     Returns:
         str: Path to the prepared dataset folder.

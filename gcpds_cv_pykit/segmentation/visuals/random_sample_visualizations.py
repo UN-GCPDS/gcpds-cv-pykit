@@ -14,7 +14,8 @@ def random_sample_visualization(
     type: Optional[str] = None,
     num_annotators: Optional[int] = None,
     annotators: bool = False,
-    ground_truth: bool = False
+    ground_truth: bool = False,
+    probabilistic: bool = False
 ) -> None:
     """
     Visualize a random sample from a dataset with its corresponding segmentation masks.
@@ -32,6 +33,7 @@ def random_sample_visualization(
         num_annotators (Optional[int]): Number of annotators (required if type="annot_harmony").
         annotators (bool): If True, display annotators' masks (only for type="annot_harmony").
         ground_truth (bool): If True, display ground truth masks (only for type="annot_harmony").
+        probabilistic (bool): If True, assumes dataset is in probabilistic mode (no ground truth).
 
     Raises:
         ValueError: If invalid arguments are provided.
@@ -99,6 +101,13 @@ def random_sample_visualization(
     elif type == "annot_harmony":
         if num_annotators is None:
             raise ValueError("num_annotators must be specified when type='annot_harmony'")
+        
+        # Override ground_truth if probabilistic mode is enabled
+        if probabilistic:
+            ground_truth = False
+            annotators = True
+            print("[INFO] Probabilistic mode: ground truth will not be displayed")
+        
         if not (annotators or ground_truth):
             raise ValueError("At least one of annotators or ground_truth must be True")
 
@@ -149,7 +158,10 @@ def random_sample_visualization(
         # Annotators masks
         if annotators and row_annot is not None and anns_masks is not None:
             title_ax = fig.add_subplot(gs[row_annot, :])
-            title_ax.set_title("Annotators' Segmentation Masks", loc="center")
+            title_text = "Annotators' Segmentation Masks"
+            if probabilistic:
+                title_text += " (Probabilistic Mode)"
+            title_ax.set_title(title_text, loc="center")
             title_ax.axis("off")
 
             chosen_ann = random.sample(range(num_annotators), min(num_annotators, cols))
@@ -158,6 +170,7 @@ def random_sample_visualization(
             for i, ann_idx in enumerate(chosen_ann):
                 mask_index = ann_idx + chosen_classes[i] * num_annotators
                 axes[row_annot][i].imshow(anns_masks[sample_idx, mask_index], cmap="viridis", vmin=0, vmax=1)
+                axes[row_annot][i].set_title(f"Ann {ann_idx}, C{chosen_classes[i]}", fontsize=10)
                 axes[row_annot][i].axis("off")
 
         # Ground truth masks
@@ -174,6 +187,7 @@ def random_sample_visualization(
             for i, class_idx in enumerate(chosen_classes):
                 axes[row_gt][i].imshow(gt_masks[sample_idx, class_idx], cmap="viridis", vmin=0, vmax=1)
                 axes[row_gt][i].axis("off")
+        
         for r in range(rows):
             for c in range(cols):
                 axes[r][c].axis("off")
@@ -183,7 +197,7 @@ def random_sample_visualization(
         del images
         if annotators:
             del anns_masks, anns_onehot
-        if ground_truth:
+        if ground_truth and gt_masks is not None:
             del gt_masks
         gc.collect()
 

@@ -27,6 +27,7 @@ class AnnotHarmonyDataset(Dataset):
         partition: str,
         annotators: bool = True,
         ground_truth: bool = True,
+        probabilistic: bool = False,
         single_class: Optional[int] = None,
         augment: bool = True,
         ignored_value: float = 0.6,
@@ -40,6 +41,7 @@ class AnnotHarmonyDataset(Dataset):
             partition (str): Dataset split (e.g., 'Train', 'Val', 'Test').
             annotators (bool): Whether to include annotator masks.
             ground_truth (bool): Whether to include ground truth masks.
+            probabilistic (bool): If True, only load images and masks (no ground truth).
             single_class (int, optional): If set, only load this class.
             augment (bool): Apply augmentations (only in training).
             ignored_value (float): Fill value for missing masks.
@@ -49,8 +51,16 @@ class AnnotHarmonyDataset(Dataset):
         self.num_classes = num_classes
         self.num_annotators = num_annotators
         self.partition = partition
-        self.annotators = annotators
-        self.ground_truth = ground_truth
+        self.probabilistic = probabilistic
+        
+        # If probabilistic mode is enabled, override ground_truth to False
+        if self.probabilistic:
+            self.annotators = True
+            self.ground_truth = False
+        else:
+            self.annotators = annotators
+            self.ground_truth = ground_truth
+            
         self.single_class = single_class
         self.augment = augment and (partition.lower() == "train")
         self.ignored_value = ignored_value
@@ -64,6 +74,8 @@ class AnnotHarmonyDataset(Dataset):
         self.num_samples = len(self.patch_files)
 
         print(f"[INFO] Found {self.num_samples} patch files in {patch_path_pattern}")
+        if self.probabilistic:
+            print(f"[INFO] Probabilistic mode enabled - ground truth will not be loaded")
 
         # --- Collect annotator masks ---
         mask_path_main = self.data_dir / partition / "masks"
@@ -81,19 +93,22 @@ class AnnotHarmonyDataset(Dataset):
                     masks_sample.append(str(mask_path))
             self.masks_path.append(masks_sample)
 
-        # --- Collect ground truth masks ---
-        gt_path_main = mask_path_main / "ground_truth"
-        self.ground_truth_masks_path = []
-        for sample in tqdm(self.file_sample, desc="Organizing GT masks"):
-            masks_sample = []
-            if self.single_class is not None:
-                mask_path = gt_path_main / f"class_{self.single_class}" / sample
-                masks_sample.append(str(mask_path))
-            else:
-                for class_id in range(self.num_classes):
-                    mask_path = gt_path_main / f"class_{class_id}" / sample
+        # --- Collect ground truth masks (skip if probabilistic mode) ---
+        if not self.probabilistic:
+            gt_path_main = mask_path_main / "ground_truth"
+            self.ground_truth_masks_path = []
+            for sample in tqdm(self.file_sample, desc="Organizing GT masks"):
+                masks_sample = []
+                if self.single_class is not None:
+                    mask_path = gt_path_main / f"class_{self.single_class}" / sample
                     masks_sample.append(str(mask_path))
-            self.ground_truth_masks_path.append(masks_sample)
+                else:
+                    for class_id in range(self.num_classes):
+                        mask_path = gt_path_main / f"class_{class_id}" / sample
+                        masks_sample.append(str(mask_path))
+                self.ground_truth_masks_path.append(masks_sample)
+        else:
+            self.ground_truth_masks_path = []
 
     @staticmethod
     def _alphanumeric_key(s: str):
@@ -237,6 +252,7 @@ def AnnotHarmonyDataloader(
     partition: str,
     annotators: bool = True,
     ground_truth: bool = True,
+    probabilistic: bool = False,
     single_class: Optional[int] = None,
     augment: bool = True,
     num_workers: int = 0,
@@ -245,6 +261,9 @@ def AnnotHarmonyDataloader(
 ) -> DataLoader:
     """
     Utility function to create DataLoader.
+    
+    Args:
+        probabilistic (bool): If True, only load images and masks (no ground truth).
     """
     dataset = AnnotHarmonyDataset(
         data_dir=data_dir,
@@ -254,6 +273,7 @@ def AnnotHarmonyDataloader(
         partition=partition,
         annotators=annotators,
         ground_truth=ground_truth,
+        probabilistic=probabilistic,
         single_class=single_class,
         augment=augment,
     )

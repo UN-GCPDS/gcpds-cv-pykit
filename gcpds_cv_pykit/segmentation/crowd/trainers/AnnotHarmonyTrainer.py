@@ -312,6 +312,45 @@ class AnnotHarmonyTrainer:
                 self.optimizer = optim.Adam(self.model.parameters())
                 self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.94)
 
+    def compute_probability_mask(self, masks: torch.Tensor) -> torch.Tensor:
+        """
+        Compute probability mask from annotator masks.
+        
+        The mask structure is: [ann_1_class_0, ..., ann_m_class_0, ..., ann_1_class_n, ..., ann_m_class_n]
+        where m is the number of annotators and n is the number of classes.
+        
+        Args:
+            masks (torch.Tensor): Annotator masks with shape [B, m*n, H, W]
+            
+        Returns:
+            torch.Tensor: Probability mask with shape [B, n, H, W]
+        """
+        batch_size = masks.shape[0]
+        num_annotators = self.config.get('Num of annotators', 1)
+        num_classes = self.config.get('Number of classes', 1)
+        ignore_value = self.config.get('Ignore value', 0.6)
+        
+        # Reshape masks to [B, num_classes, num_annotators, H, W]
+        masks_reshaped = masks.view(batch_size, num_classes, num_annotators, *masks.shape[2:])
+        
+        # Create mask to ignore specified values
+        valid_mask = (masks_reshaped != ignore_value).float()
+        
+        # Count valid annotations per pixel per class
+        valid_count = torch.sum(valid_mask, dim=2)  # [B, num_classes, H, W]
+        
+        # Sum valid annotations
+        masks_sum = torch.sum(masks_reshaped * valid_mask, dim=2)  # [B, num_classes, H, W]
+        
+        # Compute average (probability), avoiding division by zero
+        probability_mask = torch.where(
+            valid_count > 0,
+            masks_sum / valid_count,
+            torch.zeros_like(masks_sum)
+        )
+        
+        return probability_mask
+
     def perform_across_epochs(self) -> None:
         """Create and save training plots after training completion."""
         # Create results directory if it doesn't exist
@@ -339,18 +378,21 @@ class AnnotHarmonyTrainer:
         plt.savefig(f'{experiment_folder}/Loss.png')
         plt.close()
 
-        # Only create metric plots if ground truth is available
-        if self.train_ground_truth:
+        # Only create metric plots if ground truth is available or probabilistic mode is enabled
+        if self.train_ground_truth or self.probabilistic_train:
             # DICE plot
             plt.figure(figsize=(10, 6))
             plt.plot(range(self.epochs), self.train_global_dice, label='Training Global DICE', marker='o')
             for i in range(self.config['Number of classes']):
                 plt.plot(range(self.epochs), self.train_per_class_dice[i], label=f'Training Class {i} DICE', linestyle='--')
-            if self.valid_loader is not None and self.valid_ground_truth:
+            if self.valid_loader is not None and (self.valid_ground_truth or self.probabilistic_valid):
                 plt.plot(range(self.epochs), self.val_global_dice, label='Validation Global DICE', marker='x')
                 for i in range(self.config['Number of classes']):
                     plt.plot(range(self.epochs), self.val_per_class_dice[i], label=f'Validation Class {i} DICE', linestyle=':')
-            plt.title('DICE Over Epochs')
+            title = 'DICE Over Epochs'
+            if self.probabilistic_train or self.probabilistic_valid:
+                title += ' (Probabilistic Mode)'
+            plt.title(title)
             plt.xlabel('Epochs')
             plt.ylabel('DICE')
             plt.legend()
@@ -363,11 +405,14 @@ class AnnotHarmonyTrainer:
             plt.plot(range(self.epochs), self.train_global_jaccard, label='Training Global Jaccard', marker='o')
             for i in range(self.config['Number of classes']):
                 plt.plot(range(self.epochs), self.train_per_class_jaccard[i], label=f'Training Class {i} Jaccard', linestyle='--')
-            if self.valid_loader is not None and self.valid_ground_truth:
+            if self.valid_loader is not None and (self.valid_ground_truth or self.probabilistic_valid):
                 plt.plot(range(self.epochs), self.val_global_jaccard, label='Validation Global Jaccard', marker='x')
                 for i in range(self.config['Number of classes']):
                     plt.plot(range(self.epochs), self.val_per_class_jaccard[i], label=f'Validation Class {i} Jaccard', linestyle=':')
-            plt.title('Jaccard Over Epochs')
+            title = 'Jaccard Over Epochs'
+            if self.probabilistic_train or self.probabilistic_valid:
+                title += ' (Probabilistic Mode)'
+            plt.title(title)
             plt.xlabel('Epochs')
             plt.ylabel('Jaccard')
             plt.legend()
@@ -380,11 +425,14 @@ class AnnotHarmonyTrainer:
             plt.plot(range(self.epochs), self.train_global_sensitivity, label='Training Global Sensitivity', marker='o')
             for i in range(self.config['Number of classes']):
                 plt.plot(range(self.epochs), self.train_per_class_sensitivity[i], label=f'Training Class {i} Sensitivity', linestyle='--')
-            if self.valid_loader is not None and self.valid_ground_truth:
+            if self.valid_loader is not None and (self.valid_ground_truth or self.probabilistic_valid):
                 plt.plot(range(self.epochs), self.val_global_sensitivity, label='Validation Global Sensitivity', marker='x')
                 for i in range(self.config['Number of classes']):
                     plt.plot(range(self.epochs), self.val_per_class_sensitivity[i], label=f'Validation Class {i} Sensitivity', linestyle=':')
-            plt.title('Sensitivity Over Epochs')
+            title = 'Sensitivity Over Epochs'
+            if self.probabilistic_train or self.probabilistic_valid:
+                title += ' (Probabilistic Mode)'
+            plt.title(title)
             plt.xlabel('Epochs')
             plt.ylabel('Sensitivity')
             plt.legend()
@@ -397,11 +445,14 @@ class AnnotHarmonyTrainer:
             plt.plot(range(self.epochs), self.train_global_specificity, label='Training Global Specificity', marker='o')
             for i in range(self.config['Number of classes']):
                 plt.plot(range(self.epochs), self.train_per_class_specificity[i], label=f'Training Class {i} Specificity', linestyle='--')
-            if self.valid_loader is not None and self.valid_ground_truth:
+            if self.valid_loader is not None and (self.valid_ground_truth or self.probabilistic_valid):
                 plt.plot(range(self.epochs), self.val_global_specificity, label='Validation Global Specificity', marker='x')
                 for i in range(self.config['Number of classes']):
                     plt.plot(range(self.epochs), self.val_per_class_specificity[i], label=f'Validation Class {i} Specificity', linestyle=':')
-            plt.title('Specificity Over Epochs')
+            title = 'Specificity Over Epochs'
+            if self.probabilistic_train or self.probabilistic_valid:
+                title += ' (Probabilistic Mode)'
+            plt.title(title)
             plt.xlabel('Epochs')
             plt.ylabel('Specificity')
             plt.legend()
@@ -557,6 +608,69 @@ class AnnotHarmonyTrainer:
             dice_per_class, jaccard_per_class, sensitivity_per_class, specificity_per_class
         )
 
+    def calculate_metrics_probabilistic(
+        self,
+        y_pred: torch.Tensor,
+        y_true: torch.Tensor,
+        thresholds: List[float] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+        ignore_value: float = 0.6,
+        smooth: float = 1e-8
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Calculate segmentation metrics for probabilistic mode by averaging over multiple thresholds.
+        
+        Args:
+            y_pred (torch.Tensor): Prediction tensor.
+            y_true (torch.Tensor): Probability mask (averaged annotations).
+            thresholds (List[float]): List of thresholds to evaluate.
+            ignore_value (float): Value in y_true to ignore.
+            smooth (float): Smoothing factor.
+            
+        Returns:
+            Tuple containing average and per-class metrics.
+        """
+        num_thresholds = len(thresholds)
+        
+        # Initialize accumulators
+        dice_avg_sum = 0.0
+        jaccard_avg_sum = 0.0
+        sensitivity_avg_sum = 0.0
+        specificity_avg_sum = 0.0
+        
+        num_classes = y_pred.shape[1]
+        dice_per_class_sum = torch.zeros(num_classes, device=y_pred.device)
+        jaccard_per_class_sum = torch.zeros(num_classes, device=y_pred.device)
+        sensitivity_per_class_sum = torch.zeros(num_classes, device=y_pred.device)
+        specificity_per_class_sum = torch.zeros(num_classes, device=y_pred.device)
+        
+        # Calculate metrics for each threshold
+        for threshold in thresholds:
+            metrics = self.calculate_metrics(y_pred, y_true, threshold, ignore_value, smooth)
+            
+            dice_avg_sum += metrics[0]
+            jaccard_avg_sum += metrics[1]
+            sensitivity_avg_sum += metrics[2]
+            specificity_avg_sum += metrics[3]
+            dice_per_class_sum += metrics[4]
+            jaccard_per_class_sum += metrics[5]
+            sensitivity_per_class_sum += metrics[6]
+            specificity_per_class_sum += metrics[7]
+        
+        # Average over all thresholds
+        dice_avg = dice_avg_sum / num_thresholds
+        jaccard_avg = jaccard_avg_sum / num_thresholds
+        sensitivity_avg = sensitivity_avg_sum / num_thresholds
+        specificity_avg = specificity_avg_sum / num_thresholds
+        dice_per_class = dice_per_class_sum / num_thresholds
+        jaccard_per_class = jaccard_per_class_sum / num_thresholds
+        sensitivity_per_class = sensitivity_per_class_sum / num_thresholds
+        specificity_per_class = specificity_per_class_sum / num_thresholds
+        
+        return (
+            dice_avg, jaccard_avg, sensitivity_avg, specificity_avg,
+            dice_per_class, jaccard_per_class, sensitivity_per_class, specificity_per_class
+        )
+
     def train_step(
         self,
         images: torch.Tensor,
@@ -574,7 +688,7 @@ class AnnotHarmonyTrainer:
             orig_mask (torch.Tensor, optional): Batch of ground truth masks
 
         Returns:
-            If train_ground_truth is True: tuple of (loss, metrics...)
+            If train_ground_truth or probabilistic_train is True: tuple of (loss, metrics...)
             Otherwise: loss value
         """
 
@@ -608,7 +722,7 @@ class AnnotHarmonyTrainer:
                 loss.backward()
                 self.optimizer.step()
 
-        # Calculate metrics if ground truth is available
+        # Calculate metrics if ground truth is available or probabilistic mode
         if self.train_ground_truth and orig_mask is not None:
             if isinstance(self.single_class_train, int):
                 selected_pred = y_pred[0][:, self.single_class_train:self.single_class_train + 1]
@@ -616,6 +730,19 @@ class AnnotHarmonyTrainer:
             else:
                 selected_pred = y_pred[0][:, :self.config['Number of classes']]
                 metrics = self.calculate_metrics(selected_pred, orig_mask)
+            return (loss.item(), *metrics)
+        elif self.probabilistic_train:
+            # Compute probability mask from annotator masks
+            probability_mask = self.compute_probability_mask(masks)
+            
+            if isinstance(self.single_class_train, int):
+                selected_pred = y_pred[0][:, self.single_class_train:self.single_class_train + 1]
+                selected_prob_mask = probability_mask[:, self.single_class_train:self.single_class_train + 1]
+            else:
+                selected_pred = y_pred[0][:, :self.config['Number of classes']]
+                selected_prob_mask = probability_mask
+            
+            metrics = self.calculate_metrics_probabilistic(selected_pred, selected_prob_mask)
             return (loss.item(), *metrics)
         else:
             return loss.item()
@@ -673,13 +800,25 @@ class AnnotHarmonyTrainer:
                 else:
                     selected_pred = y_pred[0][:, :self.config['Number of classes']]
                     metrics = self.calculate_metrics(selected_pred, orig_mask)
+            elif self.probabilistic_valid and masks is not None:
+                # Compute probability mask from annotator masks
+                probability_mask = self.compute_probability_mask(masks)
+                
+                if isinstance(self.single_class_valid, int):
+                    selected_pred = y_pred[0][:, self.single_class_valid:self.single_class_valid + 1]
+                    selected_prob_mask = probability_mask[:, self.single_class_valid:self.single_class_valid + 1]
+                else:
+                    selected_pred = y_pred[0][:, :self.config['Number of classes']]
+                    selected_prob_mask = probability_mask
+                
+                metrics = self.calculate_metrics_probabilistic(selected_pred, selected_prob_mask)
 
             # Return appropriate values based on configuration
-            if self.annotators_valid and self.valid_ground_truth:
+            if self.annotators_valid and (self.valid_ground_truth or self.probabilistic_valid):
                 return (loss, *metrics)
-            elif self.annotators_valid and not self.valid_ground_truth:
+            elif self.annotators_valid and not self.valid_ground_truth and not self.probabilistic_valid:
                 return loss
-            elif not self.annotators_valid and self.valid_ground_truth:
+            elif not self.annotators_valid and (self.valid_ground_truth or self.probabilistic_valid):
                 return metrics
             else:
                 raise ValueError("Invalid validation data configuration")
@@ -695,8 +834,8 @@ class AnnotHarmonyTrainer:
         self.train_loss = np.zeros(self.epochs)
         self.val_loss = np.zeros(self.epochs)
 
-        # Initialize metric arrays if ground truth is available
-        if self.train_ground_truth:
+        # Initialize metric arrays if ground truth is available or probabilistic mode
+        if self.train_ground_truth or self.probabilistic_train:
             self.train_global_dice = np.zeros(self.epochs)
             self.train_per_class_dice = [np.zeros(self.epochs) for _ in range(self.config['Number of classes'])]
             self.train_global_jaccard = np.zeros(self.epochs)
@@ -706,7 +845,7 @@ class AnnotHarmonyTrainer:
             self.train_global_specificity = np.zeros(self.epochs)
             self.train_per_class_specificity = [np.zeros(self.epochs) for _ in range(self.config['Number of classes'])]
 
-        if self.valid_ground_truth:
+        if self.valid_ground_truth or self.probabilistic_valid:
             self.val_global_dice = np.zeros(self.epochs)
             self.val_per_class_dice = [np.zeros(self.epochs) for _ in range(self.config['Number of classes'])]
             self.val_global_jaccard = np.zeros(self.epochs)
@@ -755,15 +894,20 @@ class AnnotHarmonyTrainer:
             total_train_specificity_per_class = torch.zeros(num_classes)
 
             for data_batch in tqdm(self.train_loader, desc=f"Training Epoch {epoch + 1}/{self.epochs}"):
-                if self.train_ground_truth and len(data_batch) == 4:
-                    images, masks, anns_onehot, orig_mask = data_batch
+                if (self.train_ground_truth or self.probabilistic_train) and len(data_batch) >= 3:
+                    if len(data_batch) == 4:
+                        images, masks, anns_onehot, orig_mask = data_batch
+                    else:
+                        images, masks, anns_onehot = data_batch
+                        orig_mask = None
+                    
                     train_metrics = self.train_step(images, masks, anns_onehot, orig_mask)
                     
                     batch_loss = train_metrics[0]
-                    batch_dice_avg = train_metrics[1].cpu()
-                    batch_jaccard_avg = train_metrics[2].cpu()
-                    batch_sensitivity_avg = train_metrics[3].cpu()
-                    batch_specificity_avg = train_metrics[4].cpu()
+                    batch_dice_avg = train_metrics[1].cpu() if torch.is_tensor(train_metrics[1]) else train_metrics[1]
+                    batch_jaccard_avg = train_metrics[2].cpu() if torch.is_tensor(train_metrics[2]) else train_metrics[2]
+                    batch_sensitivity_avg = train_metrics[3].cpu() if torch.is_tensor(train_metrics[3]) else train_metrics[3]
+                    batch_specificity_avg = train_metrics[4].cpu() if torch.is_tensor(train_metrics[4]) else train_metrics[4]
                     batch_dice_per_class = train_metrics[5].cpu()
                     batch_jaccard_per_class = train_metrics[6].cpu()
                     batch_sensitivity_per_class = train_metrics[7].cpu()
@@ -787,7 +931,7 @@ class AnnotHarmonyTrainer:
 
             avg_train_loss = total_train_loss / num_train_batches
 
-            if self.train_ground_truth:
+            if self.train_ground_truth or self.probabilistic_train:
                 avg_train_dice = total_train_dice_avg / num_train_batches
                 avg_train_jaccard = total_train_jaccard_avg / num_train_batches
                 avg_train_sensitivity = total_train_sensitivity_avg / num_train_batches
@@ -817,15 +961,20 @@ class AnnotHarmonyTrainer:
 
             if self.valid_loader is not None:
                 for data_batch in tqdm(self.valid_loader, desc=f"Validation Epoch {epoch + 1}/{self.epochs}"):
-                    if self.annotators_valid and self.valid_ground_truth and len(data_batch) == 4:
-                        images, masks, anns_onehot, orig_mask = data_batch
+                    if self.annotators_valid and (self.valid_ground_truth or self.probabilistic_valid) and len(data_batch) >= 3:
+                        if len(data_batch) == 4:
+                            images, masks, anns_onehot, orig_mask = data_batch
+                        else:
+                            images, masks, anns_onehot = data_batch
+                            orig_mask = None
+                        
                         val_metrics = self.val_step(images, masks, anns_onehot, orig_mask)
                         
                         batch_loss = val_metrics[0]
-                        batch_dice_avg = val_metrics[1].cpu()
-                        batch_jaccard_avg = val_metrics[2].cpu()
-                        batch_sensitivity_avg = val_metrics[3].cpu()
-                        batch_specificity_avg = val_metrics[4].cpu()
+                        batch_dice_avg = val_metrics[1].cpu() if torch.is_tensor(val_metrics[1]) else val_metrics[1]
+                        batch_jaccard_avg = val_metrics[2].cpu() if torch.is_tensor(val_metrics[2]) else val_metrics[2]
+                        batch_sensitivity_avg = val_metrics[3].cpu() if torch.is_tensor(val_metrics[3]) else val_metrics[3]
+                        batch_specificity_avg = val_metrics[4].cpu() if torch.is_tensor(val_metrics[4]) else val_metrics[4]
                         batch_dice_per_class = val_metrics[5].cpu()
                         batch_jaccard_per_class = val_metrics[6].cpu()
                         batch_sensitivity_per_class = val_metrics[7].cpu()
@@ -841,19 +990,25 @@ class AnnotHarmonyTrainer:
                         total_val_sensitivity_per_class += batch_sensitivity_per_class
                         total_val_specificity_per_class += batch_specificity_per_class
                         
-                    elif self.annotators_valid and not self.valid_ground_truth and len(data_batch) == 3:
+                    elif self.annotators_valid and not self.valid_ground_truth and not self.probabilistic_valid and len(data_batch) == 3:
                         images, masks, anns_onehot = data_batch
                         batch_loss = self.val_step(images, masks, anns_onehot)
                         total_val_loss += batch_loss
                         
-                    elif not self.annotators_valid and self.valid_ground_truth and len(data_batch) == 2:
-                        images, orig_mask = data_batch
-                        val_metrics = self.val_step(images, None, None, orig_mask)
+                    elif not self.annotators_valid and (self.valid_ground_truth or self.probabilistic_valid) and len(data_batch) >= 2:
+                        if len(data_batch) == 2:
+                            images, orig_mask = data_batch
+                        else:
+                            images, masks, anns_onehot = data_batch
+                            orig_mask = None
                         
-                        batch_dice_avg = val_metrics[0].cpu()
-                        batch_jaccard_avg = val_metrics[1].cpu()
-                        batch_sensitivity_avg = val_metrics[2].cpu()
-                        batch_specificity_avg = val_metrics[3].cpu()
+                        val_metrics = self.val_step(images, masks if len(data_batch) == 3 else None, 
+                                                    anns_onehot if len(data_batch) == 3 else None, orig_mask)
+                        
+                        batch_dice_avg = val_metrics[0].cpu() if torch.is_tensor(val_metrics[0]) else val_metrics[0]
+                        batch_jaccard_avg = val_metrics[1].cpu() if torch.is_tensor(val_metrics[1]) else val_metrics[1]
+                        batch_sensitivity_avg = val_metrics[2].cpu() if torch.is_tensor(val_metrics[2]) else val_metrics[2]
+                        batch_specificity_avg = val_metrics[3].cpu() if torch.is_tensor(val_metrics[3]) else val_metrics[3]
                         batch_dice_per_class = val_metrics[4].cpu()
                         batch_jaccard_per_class = val_metrics[5].cpu()
                         batch_sensitivity_per_class = val_metrics[6].cpu()
@@ -876,7 +1031,7 @@ class AnnotHarmonyTrainer:
                 else:
                     avg_val_loss = 0.0
                     
-                if self.valid_ground_truth:
+                if self.valid_ground_truth or self.probabilistic_valid:
                     avg_val_dice = total_val_dice_avg / num_val_batches
                     avg_val_jaccard = total_val_jaccard_avg / num_val_batches
                     avg_val_sensitivity = total_val_sensitivity_avg / num_val_batches
@@ -898,16 +1053,14 @@ class AnnotHarmonyTrainer:
             # Generate visualizations every 5 epochs
             if epoch % 5 == 0 and len(data_batch) >= 3:
                 if len(data_batch) == 4:
-                    images, masks, anns_onehot, _ = data_batch
+                    images, masks, anns_onehot, orig_mask = data_batch
                 else:
                     images, masks, anns_onehot = data_batch
-                if orig_mask is None:
-                    self.visualizations(images, masks, anns_onehot, epoch, None)
-                else:
-                    self.visualizations(images, masks, anns_onehot, epoch, orig_mask)
+                    orig_mask = None
+                self.visualizations(images, masks, anns_onehot, epoch, orig_mask)
 
             # Save best model
-            if self.valid_ground_truth and avg_val_dice > self.best_val_dice:
+            if (self.valid_ground_truth or self.probabilistic_valid) and avg_val_dice > self.best_val_dice:
                 self.best_val_dice = avg_val_dice
                 torch.save(self.model.state_dict(), f'{self.models_dir}/best_model.pt')
 
@@ -930,13 +1083,14 @@ class AnnotHarmonyTrainer:
 
             print(message)
 
-            # Print training metrics if ground truth is available
-            if self.train_ground_truth:
+            # Print training metrics if ground truth is available or probabilistic mode
+            if self.train_ground_truth or self.probabilistic_train:
+                mode_label = " (Probabilistic)" if self.probabilistic_train else ""
                 train_metrics_avg = (
-                    f"Train_DICE_avg: {'zero' if avg_train_dice == 0 else f'{avg_train_dice:.5f}'} | "
-                    f"Train_Jaccard_avg: {'zero' if avg_train_jaccard == 0 else f'{avg_train_jaccard:.5f}'} | "
-                    f"Train_Sensitivity_avg: {'zero' if avg_train_sensitivity == 0 else f'{avg_train_sensitivity:.5f}'} | "
-                    f"Train_Specificity_avg: {'zero' if avg_train_specificity == 0 else f'{avg_train_specificity:.5f}'} "
+                    f"Train_DICE_avg{mode_label}: {'zero' if avg_train_dice == 0 else f'{avg_train_dice:.5f}'} | "
+                    f"Train_Jaccard_avg{mode_label}: {'zero' if avg_train_jaccard == 0 else f'{avg_train_jaccard:.5f}'} | "
+                    f"Train_Sensitivity_avg{mode_label}: {'zero' if avg_train_sensitivity == 0 else f'{avg_train_sensitivity:.5f}'} | "
+                    f"Train_Specificity_avg{mode_label}: {'zero' if avg_train_specificity == 0 else f'{avg_train_specificity:.5f}'} "
                 )
                 print(train_metrics_avg)
 
@@ -966,13 +1120,14 @@ class AnnotHarmonyTrainer:
                         'Training Specificity': avg_train_specificity
                     }, step=epoch)
 
-            # Print validation metrics if ground truth is available
-            if self.valid_loader is not None and self.valid_ground_truth:
+            # Print validation metrics if ground truth is available or probabilistic mode
+            if self.valid_loader is not None and (self.valid_ground_truth or self.probabilistic_valid):
+                mode_label = " (Probabilistic)" if self.probabilistic_valid else ""
                 val_metrics_avg = (
-                    f"Val_DICE_avg: {'zero' if avg_val_dice == 0 else f'{avg_val_dice:.5f}'} | "
-                    f"Val_Jaccard_avg: {'zero' if avg_val_jaccard == 0 else f'{avg_val_jaccard:.5f}'} | "
-                    f"Val_Sensitivity_avg: {'zero' if avg_val_sensitivity == 0 else f'{avg_val_sensitivity:.5f}'} | "
-                    f"Val_Specificity_avg: {'zero' if avg_val_specificity == 0 else f'{avg_val_specificity:.5f}'} "
+                    f"Val_DICE_avg{mode_label}: {'zero' if avg_val_dice == 0 else f'{avg_val_dice:.5f}'} | "
+                    f"Val_Jaccard_avg{mode_label}: {'zero' if avg_val_jaccard == 0 else f'{avg_val_jaccard:.5f}'} | "
+                    f"Val_Sensitivity_avg{mode_label}: {'zero' if avg_val_sensitivity == 0 else f'{avg_val_sensitivity:.5f}'} | "
+                    f"Val_Specificity_avg{mode_label}: {'zero' if avg_val_specificity == 0 else f'{avg_val_specificity:.5f}'} "
                 )
                 print(val_metrics_avg)
 
@@ -1035,6 +1190,8 @@ class AnnotHarmonyTrainer:
         self.annotators_valid = self.config.get('Annotators valid', True)
         self.single_class_train = self.config.get('Single class train', None)
         self.single_class_valid = self.config.get('Single class valid', None)
+        self.probabilistic_train = self.config.get('Probabilistic train', None)
+        self.probabilistic_valid = self.config.get('Probabilistic valid', None)
         
         self.models_dir = './models'
         if not os.path.exists(self.models_dir):
