@@ -1146,20 +1146,6 @@ If you use this toolkit in your research, please cite:
 
 ---
 
-## 📝 Changelog
-
-### Version 0.1.0.63 (Current)
-
-- ✨ Initial release
-- 🎯 Support for UNet, ResUNet, DeepLabV3+, FCN models
-- 📉 Multiple loss functions (DICE, CrossEntropy, Focal, Tversky)
-- 🗂️ Kaggle dataset integration
-- 📊 Weights & Biases integration
-- 🚀 Mixed precision training support
-- 📈 Comprehensive evaluation metrics
-
----
-
 <div align="center">
 
 **Made with ❤️ by the GCPDS Team**
