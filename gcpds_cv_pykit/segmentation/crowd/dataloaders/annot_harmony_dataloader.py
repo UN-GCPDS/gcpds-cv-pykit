@@ -29,6 +29,7 @@ class AnnotHarmonyDataset(Dataset):
         ground_truth: bool = True,
         probabilistic: bool = False,
         single_class: Optional[int] = None,
+        images_folder: Optional[str] = None,
         augment: bool = True,
         ignored_value: float = 0.6,
     ):
@@ -43,6 +44,7 @@ class AnnotHarmonyDataset(Dataset):
             ground_truth (bool): Whether to include ground truth masks.
             probabilistic (bool): If True, only load images and masks (no ground truth).
             single_class (int, optional): If set, only load this class.
+            images_folder (Optional[str], optional): Name of the folder containing images.
             augment (bool): Apply augmentations (only in training).
             ignored_value (float): Fill value for missing masks.
         """
