@@ -152,7 +152,7 @@ def random_sample_visualization(
 
         # Show image
         axes[0][0].set_title("Image", loc="center")
-        axes[0][0].imshow(images[sample_idx].permute(1, 2, 0))
+        axes[0][0].imshow(images[sample_idx].permute(1, 2, 0).cpu().numpy())
         axes[0][0].axis("off")
 
         # Annotators masks
@@ -169,7 +169,7 @@ def random_sample_visualization(
 
             for i, ann_idx in enumerate(chosen_ann):
                 mask_index = ann_idx + chosen_classes[i] * num_annotators
-                axes[row_annot][i].imshow(anns_masks[sample_idx, mask_index], cmap="viridis", vmin=0, vmax=1)
+                axes[row_annot][i].imshow(anns_masks[sample_idx, mask_index].cpu().numpy(), cmap="viridis", vmin=0, vmax=1)
                 axes[row_annot][i].set_title(f"Ann {ann_idx}, C{chosen_classes[i]}", fontsize=10)
                 axes[row_annot][i].axis("off")
 
@@ -177,7 +177,7 @@ def random_sample_visualization(
         if ground_truth and row_gt is not None and gt_masks is not None:
             if single_class is None:
                 chosen_classes = random.sample(range(num_classes), min(num_classes, cols))
-                title_ax = fig.add_subplot(gs[row_gt, :])
+                title_ax = fig.add_subplot(gs[row_gt, :].cpu().numpy())
                 title_ax.set_title("Ground Truth Segmentation Masks", loc="center")
                 title_ax.axis("off")
             else:
@@ -185,7 +185,7 @@ def random_sample_visualization(
                 axes[row_gt][0].set_title(f"GT Class {single_class}", loc="center")
 
             for i, class_idx in enumerate(chosen_classes):
-                axes[row_gt][i].imshow(gt_masks[sample_idx, class_idx], cmap="viridis", vmin=0, vmax=1)
+                axes[row_gt][i].imshow(gt_masks[sample_idx, class_idx].cpu().numpy(), cmap="viridis", vmin=0, vmax=1)
                 axes[row_gt][i].axis("off")
         
         for r in range(rows):
