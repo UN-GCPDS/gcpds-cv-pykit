@@ -407,7 +407,7 @@ def AnnotHarmonyDataloader(
     single_class: Optional[int] = None,
     augment: bool = True,
     images_folder: Optional[str] = None,
-    num_workers: int = 0,
+    num_workers: int = 4,
     prefetch_factor: int = 2,
     pin_memory: bool = True,
 ) -> DataLoader:
